@@ -435,6 +435,7 @@ canvas{width:100%!important}
     <div class="cfg-pad">
       <div class="sync-badge warn" id="sync-status">⚠️ Cargando…</div>
       <button class="btn primary" onclick="syncNow()" style="width:100%">☁️ Sincronizar ahora</button>
+      <div id="sync-debug" style="margin-top:10px;font-size:11px;font-family:monospace;background:#f4f4f5;border-radius:8px;padding:10px;max-height:200px;overflow-y:auto;color:#18181b;line-height:1.8"></div>
     </div>
   </div>
   <div class="sb">
@@ -575,21 +576,32 @@ async function sbQ(method,table,body,qs=''){
 }
 
 async function syncNow(){
+  const dbg = (msg) => {
+    const el = document.getElementById('sync-debug');
+    if(el) el.innerHTML += '<div>' + new Date().toLocaleTimeString() + ' — ' + msg + '</div>';
+    console.log(msg);
+  };
   if(!getSB()){
     document.getElementById('sync-status').textContent='⚠️ Supabase no configurado en Vercel';
     document.getElementById('sync-status').className='sync-badge warn';
     return;
   }
   const uid=getUserId();
-  if(!uid)return;
+  if(!uid){dbg('❌ No hay usuario');return;}
   document.getElementById('sync-chip').className='chip chip-sync busy';
   document.getElementById('sync-lbl').textContent='…';
+  const el=document.getElementById('sync-debug');if(el)el.innerHTML='';
+  dbg('Usuario: ' + uid);
+  dbg('Supabase URL: ' + SB_URL.slice(0,30));
+  dbg('Comidas locales: ' + state.meals.length);
   try{
     const today=new Date().toISOString().split('T')[0];
-    // PUSH meals (delete today's and reinsert to avoid duplicates)
-    await sbQ('DELETE','meals',null,`?user_id=eq.${uid}&date=eq.${today}`);
+    dbg('Borrando meals de hoy...');
+    const delRes = await sbQ('DELETE','meals',null,`?user_id=eq.${uid}&date=eq.${today}`);
+    dbg('Delete result: ' + JSON.stringify(delRes));
     for(const m of state.meals){
-      await sbQ('POST','meals',{user_id:uid,date:today,type:m.type,description:m.desc,kcal:m.kcal});
+      const r = await sbQ('POST','meals',{user_id:uid,date:today,type:m.type,description:m.desc,kcal:m.kcal});
+      dbg('Insert meal: ' + m.desc + ' → ' + JSON.stringify(r));
     }
     // PUSH history
     for(const h of state.history||[]){
@@ -602,7 +614,7 @@ async function syncNow(){
     // PUSH progress
     await sbQ('POST','user_progress',{user_id:uid,xp:state.xp||0,streak:state.streak||0,last_streak_date:state.lastStreak,cfg:state.cfg,updated_at:new Date().toISOString()});
 
-    // PULL history
+    dbg('Push completo. Iniciando pull...'); // PULL history
     const rh=await sbQ('GET','daily_history',null,`?user_id=eq.${uid}&order=date.desc&limit=90`);
     if(rh&&rh.length){
       if(!state.history)state.history=[];
