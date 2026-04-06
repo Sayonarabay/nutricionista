@@ -1049,9 +1049,12 @@ function showToast(msg){
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────
-render();
-// Load Supabase config from Vercel, then sync
-initSB().then(()=>{if(getSB())setTimeout(syncNow,600);});
+async function init() {
+  await initSB();          // 1. carga claves Supabase desde Vercel
+  render();                // 2. pinta UI con datos locales
+  if (getSB()) await syncNow(); // 3. sincroniza y re-pinta con datos del servidor
+}
+init();
 </script>
 </body>
 </html>
