@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Paso a Paso</title>
+<title>NutriTrack</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -271,12 +271,27 @@ canvas { width: 100% !important; }
 <body>
 
 <!-- NAV -->
+<!-- PIN SCREEN -->
+<div id="pin-screen" style="display:none;position:fixed;inset:0;z-index:9999;background:#F7F6F3;flex-direction:column;align-items:center;justify-content:center;padding:32px;font-family:'Plus Jakarta Sans',sans-serif;">
+  <div style="width:100%;max-width:360px;">
+    <div style="width:48px;height:48px;background:#E8420A;border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+      <svg width="24" height="24" fill="white" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
+    </div>
+    <h1 style="font-size:26px;font-weight:800;letter-spacing:-.03em;text-align:center;margin-bottom:8px">NutriTrack</h1>
+    <p style="font-size:14px;color:#71717A;text-align:center;margin-bottom:32px;line-height:1.6">Introduce tu PIN personal para sincronizar tus datos entre todos tus dispositivos.</p>
+    <input id="pin-input" type="text" placeholder="Tu PIN (ej: juan2024)" style="width:100%;font-size:16px;font-weight:600;padding:14px 16px;border:2px solid #E8E5DF;border-radius:12px;background:white;color:#18181B;font-family:'Plus Jakarta Sans',sans-serif;margin-bottom:10px;text-align:center;letter-spacing:.05em;" />
+    <button onclick="confirmPin()" style="width:100%;padding:14px;background:#E8420A;color:white;border:none;border-radius:12px;font-size:16px;font-weight:800;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;letter-spacing:-.01em;">Entrar →</button>
+    <p style="font-size:12px;color:#A1A1AA;text-align:center;margin-top:16px;line-height:1.6">Usa el <strong>mismo PIN</strong> en todos tus dispositivos.<br>Si ya tienes datos, usa el PIN <strong>xv64olsg</strong></p>
+  </div>
+</div>
+
+<div id="app-root">
 <nav class="nav">
   <div class="nav-brand">
     <div class="nav-logo">
       <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>
     </div>
-    <span class="nav-name">Paso a Paso</span>
+    <span class="nav-name">NutriTrack</span>
   </div>
   <div class="nav-chips">
     <div class="chip chip-fire">🔥 <span id="nav-streak">0</span></div>
@@ -500,7 +515,11 @@ canvas { width: 100% !important; }
   </div>
 
   <div class="settings-block">
-    <div class="settings-block-title">Datos</div>
+    <div class="settings-block-title">Cuenta</div>
+    <div class="srow">
+      <div><div class="srow-label">Tu PIN actual</div><div class="srow-sub" id="current-pin-display">—</div></div>
+      <button class="btn" onclick="changePIN()">Cambiar PIN</button>
+    </div>
     <div class="srow">
       <div><div class="srow-label">Borrar todo</div><div class="srow-sub">Irreversible</div></div>
       <button class="btn danger" onclick="resetAll()">Borrar</button>
@@ -565,7 +584,10 @@ function renderTip(){document.getElementById('tip-icon').textContent=TIPS[tipIdx
 const SK='nutri_v6';
 const ICONS={Desayuno:'☀️',Comida:'🍽️',Merienda:'🍎',Cena:'🌙',Snack:'🧁',Actividad:'🏃'};
 const LEVELS=[{m:0,t:'Principiante'},{m:100,t:'Iniciado'},{m:250,t:'Constante'},{m:500,t:'Disciplinado'},{m:1000,t:'Comprometido'},{m:2000,t:'Atleta'},{m:4000,t:'Élite'},{m:8000,t:'Leyenda'}];
-const USER_ID=(()=>{let id=localStorage.getItem('_uid');if(!id){id='u_'+Math.random().toString(36).slice(2,10);localStorage.setItem('_uid',id);}return id;})();
+// PIN-based user ID — same PIN = same user on all devices
+function getUserId(){return localStorage.getItem('_uid');}
+function setUserId(pin){const id='u_'+pin.trim().toLowerCase();localStorage.setItem('_uid',id);return id;}
+function getUserPin(){return localStorage.getItem('_pin')||'';}
 
 // ─── STATE ────────────────────────────────────────────────────────────────
 function fresh(d){return{date:d,meals:[],weights:[],history:[],xp:0,streak:0,lastStreak:null,dayClosed:false,cfg:{goal:2000,weight:108,target:87}};}
@@ -627,16 +649,16 @@ async function syncNow(){
   document.getElementById('sync-lbl').textContent='…';
   try{
     const today=new Date().toISOString().split('T')[0];
-    for(const m of state.meals) await sbQ('POST','meals',{user_id:USER_ID,date:today,type:m.type,description:m.desc,kcal:m.kcal});
-    for(const h of state.history||[]) await sbQ('POST','daily_history',{user_id:USER_ID,date:h.date,consumed:h.consumed,burned:h.burned,net:h.net});
-    for(const w of state.weights||[]) await sbQ('POST','weight_log',{user_id:USER_ID,date:w.date,weight:w.weight,recorded_at:w.rawDate});
-    await sbQ('POST','user_progress',{user_id:USER_ID,xp:state.xp||0,streak:state.streak||0,last_streak_date:state.lastStreak,cfg:state.cfg,updated_at:new Date().toISOString()});
+    for(const m of state.meals) await sbQ('POST','meals',{user_id:getUserId(),date:today,type:m.type,description:m.desc,kcal:m.kcal});
+    for(const h of state.history||[]) await sbQ('POST','daily_history',{user_id:getUserId(),date:h.date,consumed:h.consumed,burned:h.burned,net:h.net});
+    for(const w of state.weights||[]) await sbQ('POST','weight_log',{user_id:getUserId(),date:w.date,weight:w.weight,recorded_at:w.rawDate});
+    await sbQ('POST','user_progress',{user_id:getUserId(),xp:state.xp||0,streak:state.streak||0,last_streak_date:state.lastStreak,cfg:state.cfg,updated_at:new Date().toISOString()});
     // pull
-    const rh=await sbQ('GET','daily_history',null,`?user_id=eq.${USER_ID}&order=date.desc&limit=90`);
+    const rh=await sbQ('GET','daily_history',null,`?user_id=eq.${getUserId()}&order=date.desc&limit=90`);
     if(rh&&rh.length){for(const h of rh){if(!state.history)state.history=[];const idx=state.history.findIndex(x=>x.date===h.date);const e={date:h.date,consumed:h.consumed,burned:h.burned,net:h.net};if(idx>=0)state.history[idx]=e;else state.history.push(e);}}
-    const rw=await sbQ('GET','weight_log',null,`?user_id=eq.${USER_ID}&order=recorded_at.desc&limit=200`);
+    const rw=await sbQ('GET','weight_log',null,`?user_id=eq.${getUserId()}&order=recorded_at.desc&limit=200`);
     if(rw&&rw.length){const m={};for(const w of[...(state.weights||[]),...rw.map(w=>({date:w.date,weight:w.weight,rawDate:w.recorded_at}))])m[w.date]=w;state.weights=Object.values(m);}
-    const rp=await sbQ('GET','user_progress',null,`?user_id=eq.${USER_ID}&limit=1`);
+    const rp=await sbQ('GET','user_progress',null,`?user_id=eq.${getUserId()}&limit=1`);
     if(rp&&rp.length){const p=rp[0];if((p.xp||0)>(state.xp||0))state.xp=p.xp;if((p.streak||0)>(state.streak||0))state.streak=p.streak;if(p.cfg)state.cfg=Object.assign({},state.cfg,p.cfg);}
     save();
     const t=new Date().toLocaleTimeString('es-ES');
@@ -1014,12 +1036,21 @@ function newDay(){
 }
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────
+function changePIN(){
+  const p=prompt('Introduce tu nuevo PIN:');
+  if(!p||p.trim().length<3){return;}
+  setUserId(p);localStorage.setItem('_pin',p);
+  showToast('✅ PIN cambiado — sincronizando...');
+  if(getSB())syncNow();
+}
 function loadCfgUI(){
   const c=state.cfg||{};
   document.getElementById('cfg-goal').value=c.goal||2000;
   document.getElementById('cfg-weight').value=c.weight||108;
   document.getElementById('cfg-target').value=c.target||87;
   if(getSB()){document.getElementById('sync-status').textContent='✅ Supabase conectado';document.getElementById('sync-status').className='sync-badge ok';}
+  const pinEl=document.getElementById('current-pin-display');
+  if(pinEl){pinEl.textContent=getUserPin()||getUserId()||'—';}
 }
 function saveConfig(){
   state.cfg={goal:parseInt(document.getElementById('cfg-goal').value)||2000,weight:parseFloat(document.getElementById('cfg-weight').value)||108,target:parseFloat(document.getElementById('cfg-target').value)||87};
@@ -1050,11 +1081,38 @@ function showToast(msg){
 
 // ─── INIT ─────────────────────────────────────────────────────────────────
 async function init() {
-  await initSB();          // 1. carga claves Supabase desde Vercel
-  render();                // 2. pinta UI con datos locales
-  if (getSB()) await syncNow(); // 3. sincroniza y re-pinta con datos del servidor
+  await initSB();
+  if (!getUserId()) {
+    showPinScreen();
+    return;
+  }
+  render();
+  if (getSB()) await syncNow();
 }
+
+function showPinScreen() {
+  document.getElementById('pin-screen').style.display='flex';
+  document.getElementById('app-root').style.display='none';
+}
+function hidePinScreen() {
+  document.getElementById('pin-screen').style.display='none';
+  document.getElementById('app-root').style.display='block';
+}
+async function confirmPin() {
+  const pin = document.getElementById('pin-input').value.trim();
+  if (pin.length < 3) { alert('Introduce al menos 3 caracteres'); return; }
+  setUserId(pin);
+  localStorage.setItem('_pin', pin);
+  hidePinScreen();
+  render();
+  if (getSB()) await syncNow();
+}
+document.addEventListener('keydown', e => {
+  if (document.getElementById('pin-screen').style.display !== 'none' && e.key === 'Enter') confirmPin();
+});
+
 init();
 </script>
+</div>
 </body>
 </html>
