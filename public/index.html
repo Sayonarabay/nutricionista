@@ -261,6 +261,7 @@ canvas.chart { width: 100% !important; height: 140px !important; }
   <div style="display:flex;gap:8px;align-items:center;">
     <div class="streak-chip"><span>🔥</span><span id="nav-streak">0</span></div>
     <div class="nav-xp"><span class="xp-icon">⚡</span><span id="nav-xp">0 XP</span></div>
+    <div id="sync-chip" onclick="syncNow()" style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--green);background:var(--green-light);padding:5px 10px;border-radius:20px;cursor:pointer">☁️ <span id="sync-label">Sync</span></div>
   </div>
 </nav>
 
@@ -474,8 +475,20 @@ canvas.chart { width: 100% !important; height: 140px !important; }
 <!-- ========== SETTINGS ========== -->
 <div class="page" id="page-settings">
   <div style="padding-top:12px;"></div>
+
+  <div class="card" style="margin-top:4px;">
+    <div class="card-title">Supabase — sincronización</div>
+    <div id="sync-status-box" style="font-size:13px;padding:10px 14px;border-radius:10px;margin-bottom:12px;font-weight:600;background:var(--amber-light);color:var(--amber);border:1px solid #ffe08a;">⚠️ Configura Supabase para sincronizar entre dispositivos</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+      <input style="font-size:13px;padding:10px 12px;background:var(--bg);border:1.5px solid var(--border2);border-radius:8px;color:var(--text);font-family:monospace;" id="cfg-sb-url" type="text" placeholder="Supabase URL: https://xxxx.supabase.co"/>
+      <input style="font-size:13px;padding:10px 12px;background:var(--bg);border:1.5px solid var(--border2);border-radius:8px;color:var(--text);font-family:monospace;" id="cfg-sb-key" type="password" placeholder="Anon key: eyJhbGci..."/>
+      <button class="act" onclick="saveSupabase()" style="background:var(--green);color:white;border-color:var(--green);font-weight:700;">Guardar y conectar ☁️</button>
+    </div>
+    <div style="font-size:11px;color:var(--text3);line-height:1.6;">Obtén estos datos en Supabase → Project Settings → API. Ejecuta primero el archivo <strong>supabase_schema.sql</strong> en el SQL Editor.</div>
+  </div>
+
   <div class="card">
-    <div class="card-title">API Key de Anthropic</div>
+    <div class="card-title">API Key de Anthropic (solo uso local)</div>
     <div class="api-area">
       <label>🔑 Tu API Key</label>
       <input class="api-inp" id="api-key-inp" type="password" placeholder="sk-ant-api03-..."/>
@@ -1030,6 +1043,7 @@ function newDay() {
   document.getElementById('fb-box').style.display = 'none';
   document.getElementById('summary-card').style.display = 'none';
   render(); showToast('🌅 Nuevo día, nueva oportunidad');
+  if (getSB()) setTimeout(syncNow, 300);
 }
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────
@@ -1083,7 +1097,127 @@ function showPage(id, tab) {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────
+
+// ═══ SUPABASE CLIENT (fetch directo, sin SDK) ═══
+function getSB() {
+  const url = localStorage.getItem('sb_url');
+  const key = localStorage.getItem('sb_key');
+  if (!url || !key) return null;
+  return { url: url.replace(/\/$/, ''), key };
+}
+async function sbQ(method, table, body, query) {
+  const sb = getSB(); if (!sb) return null;
+  try {
+    const res = await fetch(sb.url + '/rest/v1/' + table + (query||''), {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': sb.key,
+        'Authorization': 'Bearer ' + sb.key,
+        'Prefer': method === 'POST' ? 'resolution=merge-duplicates,return=minimal' : 'return=minimal'
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    if (!res.ok) return null;
+    if (method === 'GET') return await res.json();
+    return true;
+  } catch(e) { return null; }
+}
+
+// USER ID — persists across sessions
+const USER_ID = (() => {
+  let id = localStorage.getItem('nutri_uid');
+  if (!id) { id = 'u_' + Math.random().toString(36).slice(2, 10); localStorage.setItem('nutri_uid', id); }
+  return id;
+})();
+
+async function syncNow() {
+  const sb = getSB();
+  if (!sb) { showToast('⚠️ Configura Supabase en Config'); return; }
+  const chip = document.getElementById('sync-chip');
+  document.getElementById('sync-label').textContent = '...';
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    // Push meals
+    for (const m of state.meals) {
+      await sbQ('POST', 'meals', { user_id: USER_ID, date: today, type: m.type, description: m.desc, kcal: m.kcal });
+    }
+    // Push history
+    for (const h of (state.history || [])) {
+      await sbQ('POST', 'daily_history', { user_id: USER_ID, date: h.date, consumed: h.consumed, burned: h.burned, net: h.net });
+    }
+    // Push weights
+    for (const w of (state.weights || [])) {
+      await sbQ('POST', 'weight_log', { user_id: USER_ID, date: w.date, weight: w.weight, recorded_at: w.rawDate });
+    }
+    // Push progress
+    await sbQ('POST', 'user_progress', { user_id: USER_ID, xp: state.xp||0, streak: state.streak||0, last_streak_date: state.lastStreakDate, cfg: state.cfg, updated_at: new Date().toISOString() });
+
+    // Pull history
+    const rh = await sbQ('GET', 'daily_history', null, '?user_id=eq.' + USER_ID + '&order=date.desc&limit=90');
+    if (rh && rh.length) {
+      for (const h of rh) {
+        const idx = (state.history||[]).findIndex(x => x.date === h.date);
+        const e = { date: h.date, consumed: h.consumed, burned: h.burned, net: h.net };
+        if (!state.history) state.history = [];
+        if (idx >= 0) state.history[idx] = e; else state.history.push(e);
+      }
+    }
+    // Pull weights
+    const rw = await sbQ('GET', 'weight_log', null, '?user_id=eq.' + USER_ID + '&order=recorded_at.desc&limit=200');
+    if (rw && rw.length) {
+      const merged = {};
+      for (const w of [...(state.weights||[]), ...rw.map(w => ({ date: w.date, weight: w.weight, rawDate: w.recorded_at }))]) {
+        merged[w.date] = w;
+      }
+      state.weights = Object.values(merged);
+    }
+    // Pull progress
+    const rp = await sbQ('GET', 'user_progress', null, '?user_id=eq.' + USER_ID + '&limit=1');
+    if (rp && rp.length) {
+      if ((rp[0].xp||0) > (state.xp||0)) state.xp = rp[0].xp;
+      if ((rp[0].streak||0) > (state.streak||0)) state.streak = rp[0].streak;
+      if (rp[0].cfg) state.cfg = Object.assign({}, state.cfg, rp[0].cfg);
+    }
+
+    saveState();
+    document.getElementById('sync-label').textContent = '✓';
+    document.getElementById('sync-status-box').textContent = '✅ Sincronizado — ' + new Date().toLocaleTimeString('es-ES');
+    document.getElementById('sync-status-box').style.cssText = 'font-size:13px;padding:10px 14px;border-radius:10px;margin-bottom:12px;font-weight:600;background:var(--green-light);color:var(--green);border:1px solid var(--green-mid);';
+    render();
+    setTimeout(() => { document.getElementById('sync-label').textContent = 'Sync'; }, 3000);
+  } catch(e) {
+    document.getElementById('sync-label').textContent = '✗';
+    showToast('❌ Error sync: ' + e.message);
+    setTimeout(() => { document.getElementById('sync-label').textContent = 'Sync'; }, 3000);
+  }
+}
+
+function saveSupabase() {
+  const url = document.getElementById('cfg-sb-url').value.trim();
+  const key = document.getElementById('cfg-sb-key').value.trim();
+  if (!url || !key) { alert('Introduce URL y Anon Key'); return; }
+  localStorage.setItem('sb_url', url);
+  localStorage.setItem('sb_key', key);
+  showToast('🔗 Conectando con Supabase...');
+  syncNow();
+}
+
+function loadSBConfig() {
+  const u = localStorage.getItem('sb_url') || '';
+  const k = localStorage.getItem('sb_key') || '';
+  if (u) document.getElementById('cfg-sb-url').value = u;
+  if (k) document.getElementById('cfg-sb-key').value = k;
+  if (getSB()) {
+    document.getElementById('sync-status-box').textContent = '✅ Supabase configurado';
+    document.getElementById('sync-status-box').style.cssText = 'font-size:13px;padding:10px 14px;border-radius:10px;margin-bottom:12px;font-weight:600;background:var(--green-light);color:var(--green);border:1px solid var(--green-mid);';
+  }
+}
+
+
 render();
+loadSBConfig();
+if (getSB()) setTimeout(syncNow, 800);
 </script>
 </body>
 </html>

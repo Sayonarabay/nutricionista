@@ -1,39 +1,41 @@
-# NutriTrack 🥗
-
-App personal de seguimiento nutricional con IA, gamificación y progresión.
+# NutriTrack con Supabase 🥗☁️
 
 ## Estructura
 ```
-nutricionista/
+nutritrack/
 ├── public/index.html   ← App completa
-├── api/chat.js         ← Proxy serverless (oculta API key)
-├── vercel.json         ← Config Vercel
-└── README.md
+├── api/chat.js         ← Proxy Anthropic
+├── vercel.json
+└── supabase_schema.sql ← Ejecutar en Supabase SQL Editor
 ```
 
-## Despliegue en Vercel (5 min)
+## Setup en 3 pasos
 
-### 1. Sube a GitHub
-- github.com → New repository → nombre: `nutritrack`
-- "uploading an existing file" → arrastra los archivos respetando carpetas
-- Commit changes
+### 1. Supabase (base de datos)
+1. Crea proyecto en supabase.com → nombre: `nutritrack`
+2. Ve a **SQL Editor** → New Query
+3. Copia y pega todo el contenido de `supabase_schema.sql` → Run
+4. Ve a **Project Settings → API** y copia:
+   - **Project URL** → `https://xxxx.supabase.co`
+   - **anon public key** → `eyJhbGci...`
 
-### 2. Despliega en Vercel
-- vercel.com → Add New Project → importa `nutritrack`
-- No cambies nada → Deploy
+### 2. GitHub + Vercel
+1. Crea repo en GitHub, sube los archivos respetando la estructura
+2. Importa en vercel.com
+3. En Vercel → Settings → Environment Variables añade:
+   - `ANTHROPIC_API_KEY` = `sk-ant-...`
+4. Redeploy
 
-### 3. Añade la API key
-- Vercel → Settings → Environment Variables
-- Name: `ANTHROPIC_API_KEY`  Value: `sk-ant-...`
-- Marca los 3 entornos → Save → Redeploy
+### 3. Configurar Supabase en la app
+1. Abre tu URL de Vercel
+2. Ve a **Config** en la app
+3. Introduce la Supabase URL y la Anon Key
+4. Pulsa "Guardar y conectar"
 
-## Uso local (sin Vercel)
-Abre `public/index.html` directamente en el navegador.
-En Config → introduce tu API key de Anthropic (se guarda en el navegador).
+✅ A partir de ahí todos los datos se sincronizan automáticamente.
+Los datos se guardan también en localStorage como caché local.
 
-## Obtener API key
-https://console.anthropic.com/settings/keys
-
-## Coste estimado
-- Vercel: gratis (plan hobby)
-- Anthropic: ~0.01–0.05€/día
+## Coste
+- Supabase: gratis (500MB, más que suficiente)
+- Vercel: gratis
+- Anthropic: ~0.01-0.05€/día
