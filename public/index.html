@@ -329,10 +329,10 @@ canvas{width:100%!important}
       </div>
     </div>
     <div class="ob-grid">
-      <div class="ob-field"><label class="ob-lbl">Edad</label><input class="ob-inp" id="ob-age" type="number" placeholder="49" value="49"/></div>
-      <div class="ob-field"><label class="ob-lbl">Altura (cm)</label><input class="ob-inp" id="ob-ht" type="number" placeholder="182" value="182"/></div>
-      <div class="ob-field"><label class="ob-lbl">Peso (kg)</label><input class="ob-inp" id="ob-wt" type="number" placeholder="108" value="108" step="0.1"/></div>
-      <div class="ob-field"><label class="ob-lbl">Objetivo (kg)</label><input class="ob-inp" id="ob-tg" type="number" placeholder="87" value="87" step="0.1"/></div>
+      <div class="ob-field"><label class="ob-lbl">Edad</label><input class="ob-inp" id="ob-age" type="number" placeholder="49"/></div>
+      <div class="ob-field"><label class="ob-lbl">Altura (cm)</label><input class="ob-inp" id="ob-ht" type="number" placeholder="182"/></div>
+      <div class="ob-field"><label class="ob-lbl">Peso (kg)</label><input class="ob-inp" id="ob-wt" type="number" placeholder="108" step="0.1"/></div>
+      <div class="ob-field"><label class="ob-lbl">Objetivo (kg)</label><input class="ob-inp" id="ob-tg" type="number" placeholder="87" step="0.1"/></div>
     </div>
     <div class="ob-field">
       <label class="ob-lbl">Actividad</label>
@@ -588,8 +588,10 @@ let obCur=0;
 function obTo(step){
   if(step===1){const n=document.getElementById('ob-name').value.trim();if(n.length<2){alert('Mínimo 2 caracteres');return;}}
   if(step===2){
-    const w=parseFloat(document.getElementById('ob-wt').value)||108,h=parseFloat(document.getElementById('ob-ht').value)||182;
-    const age=parseInt(document.getElementById('ob-age').value)||49,gender=document.querySelector('input[name="obg"]:checked').value;
+    const _age=document.getElementById('ob-age').value,_ht=document.getElementById('ob-ht').value,_wt=document.getElementById('ob-wt').value,_tg=document.getElementById('ob-tg').value;
+    if(!_age||!_ht||!_wt||!_tg){alert('Rellena todos los campos para continuar.');return;}
+    const w=parseFloat(_wt),h=parseFloat(_ht);
+    const age=parseInt(_age),gender=document.querySelector('input[name="obg"]:checked').value;
     const act=parseFloat(document.querySelector('input[name="oba"]:checked').value)||1.375;
     const goal=calcGoal({gender,age,weight:w,height:h,activity:act});
     const bmr=gender==='M'?Math.round(88.362+13.397*w+4.799*h-5.677*age):Math.round(447.593+9.247*w+3.098*h-4.330*age);
