@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  // Devuelve config de Supabase al frontend
+  // GET → devuelve config de Supabase al frontend (sin exponer en el HTML)
   if (req.method === 'GET') {
     return res.status(200).json({
       supabaseUrl: process.env.SUPABASE_URL || '',
@@ -12,7 +12,7 @@ export default async function handler(req, res) {
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY no configurada' });
+  if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY no configurada en Vercel' });
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
