@@ -296,6 +296,36 @@ canvas{width:100%!important}
 /* TOAST */
 .toast{position:fixed;top:60px;left:50%;transform:translateX(-50%) translateY(-14px);background:var(--ink);color:#fff;padding:8px 16px;border-radius:99px;font-size:11px;font-weight:600;z-index:9999;box-shadow:var(--shadow-lg);transition:all .28s cubic-bezier(.34,1.56,.64,1);pointer-events:none;opacity:0;white-space:nowrap}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* DAY MODAL */
+.modal-backdrop{position:fixed;inset:0;z-index:500;background:rgba(26,26,24,.5);backdrop-filter:blur(4px);display:none;align-items:flex-end;justify-content:center}
+.modal-backdrop.on{display:flex}
+.modal{background:#fff;border-radius:22px 22px 0 0;width:100%;max-width:540px;max-height:85vh;display:flex;flex-direction:column;animation:mIn .22s cubic-bezier(.34,1.56,.64,1)}
+@keyframes mIn{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px;border-bottom:1px solid var(--sand2);flex-shrink:0}
+.modal-title{font-family:var(--fd);font-size:15px;font-weight:900;letter-spacing:-.03em}
+.modal-close{background:var(--sand);border:none;width:28px;height:28px;border-radius:50%;font-size:16px;cursor:pointer;color:var(--ink2)}
+.modal-body{overflow-y:auto;padding:12px 14px;flex:1}
+.modal-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px}
+.mst{background:var(--sand);border-radius:var(--r);padding:9px;text-align:center}
+.mst-v{font-family:var(--fd);font-size:16px;font-weight:900;letter-spacing:-.04em}
+.mst-l{font-size:8px;color:var(--ink3);font-weight:600;margin-top:2px}
+.modal-meals{margin-bottom:12px}
+.modal-meal-row{display:flex;align-items:center;gap:7px;padding:7px 9px;background:var(--sand);border:1px solid var(--sand2);border-radius:var(--r);margin-bottom:4px}
+.modal-meal-row.act{background:var(--green-l);border-color:var(--green-m)}
+.mm-del{background:none;border:none;cursor:pointer;color:var(--ink3);font-size:13px;padding:2px 3px;border-radius:4px}
+.mm-del:hover{background:var(--red-l);color:var(--red)}
+.modal-add{border-top:1px solid var(--sand2);padding-top:12px}
+.modal-add-lbl{font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px}
+.modal-type-row{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px}
+.modal-inp-row{display:flex;gap:6px}
+.modal-inp{flex:1;font-size:13px;padding:9px 11px;background:var(--sand);border:1.5px solid var(--sand2);border-radius:var(--r);color:var(--ink);font-family:var(--fb)}
+.modal-inp:focus{outline:none;border-color:var(--red);background:#fff}
+.modal-go{padding:9px 13px;background:var(--red);color:#fff;border:none;border-radius:var(--r);font-size:15px;font-weight:700;cursor:pointer}
+.modal-go:disabled{background:var(--sand3);cursor:not-allowed}
+.modal-spin{display:none;font-size:11px;color:var(--ink3);padding:5px 0;text-align:center}
+.cd{cursor:pointer;transition:transform .1s}
+.cd:hover{transform:scale(1.1)}
 </style>
 </head>
 <body>
@@ -567,6 +597,33 @@ canvas{width:100%!important}
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- DAY EDITOR MODAL -->
+<div class="modal-backdrop" id="day-modal" onclick="closeDayModal(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="modal-title" id="dm-title">Día</div>
+      <button class="modal-close" onclick="closeDayModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-stats">
+        <div class="mst"><div class="mst-v" id="dm-con">—</div><div class="mst-l">CONSUMIDO</div></div>
+        <div class="mst"><div class="mst-v" id="dm-bur">—</div><div class="mst-l">QUEMADO</div></div>
+        <div class="mst"><div class="mst-v ok" id="dm-net">—</div><div class="mst-l">NETO</div></div>
+      </div>
+      <div class="modal-meals" id="dm-meals"></div>
+      <div class="modal-add">
+        <div class="modal-add-lbl">Añadir comida</div>
+        <div class="modal-type-row" id="dm-types"></div>
+        <div class="modal-inp-row">
+          <input class="modal-inp" id="dm-inp" type="text" placeholder="Describe la comida…"/>
+          <button class="modal-go" id="dm-go" onclick="dmAnalyze()">→</button>
+        </div>
+        <div class="modal-spin" id="dm-spin"><span class="spin"></span>Calculando…</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <script>
@@ -904,9 +961,10 @@ function drawCal(){
     const key=`${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const h=(state.history||[]).find(x=>x.date===key),isToday=d===today.getDate();
     let cls='cd none';if(h)cls=h.net>goal*1.1?'cd over':h.net>goal*.8?'cd ok':'cd warn';if(isToday)cls+=' today';
-    html+=`<div class="${cls}">${d}</div>`;
+    html+=`<div class="${cls}" data-key="${key}">${d}</div>`;
   }
   grid.innerHTML=html;
+  grid.querySelectorAll('.cd[data-key]').forEach(el=>el.addEventListener('click',()=>openDayModal(el.dataset.key)));
 }
 
 function renderProjection(){
@@ -1006,6 +1064,104 @@ function startApp(){
   genMotiv();
   showToast('👋 Hola, '+getName().replace('user_',''));
 }
+
+// DAY MODAL
+let dmDate=null, dmType='Comida';
+
+function getDayMeals(dateKey){
+  // today's meals live in state.meals; past days in state.history (aggregated) + state.dayMeals
+  if(!state.dayMeals) state.dayMeals={};
+  const todayKey = dateKey===new Date().toISOString().split('T')[0];
+  if(todayKey) return [...state.meals];
+  return state.dayMeals[dateKey]||[];
+}
+function saveDayMeals(dateKey, meals){
+  if(!state.dayMeals) state.dayMeals={};
+  const todayKey = dateKey===new Date().toISOString().split('T')[0];
+  if(todayKey){ state.meals=meals; }
+  else { state.dayMeals[dateKey]=meals; }
+  // recompute history entry
+  const t=totals(meals,state.cfg);
+  if(!state.history) state.history=[];
+  const idx=state.history.findIndex(h=>h.date===dateKey);
+  if(meals.length){
+    const e={date:dateKey,consumed:t.consumed,burned:t.burned,net:t.net};
+    if(idx>=0) state.history[idx]=e; else state.history.push(e);
+  } else if(idx>=0){
+    state.history.splice(idx,1);
+  }
+  save();
+}
+
+function openDayModal(dateKey){
+  dmDate=dateKey;
+  dmType='Comida';
+  const d=new Date(dateKey+'T12:00:00');
+  document.getElementById('dm-title').textContent=d.toLocaleDateString('es-ES',{weekday:'short',day:'numeric',month:'short'});
+  renderDmTypes();
+  renderDmMeals();
+  document.getElementById('dm-inp').value='';
+  document.getElementById('day-modal').classList.add('on');
+}
+function closeDayModal(e){
+  if(e&&e.target!==document.getElementById('day-modal'))return;
+  document.getElementById('day-modal').classList.remove('on');
+  drawCharts(); renderProjection(); render();
+}
+function renderDmTypes(){
+  const types=['Desayuno','Comida','Merienda','Cena','Snack','Actividad'];
+  document.getElementById('dm-types').innerHTML=types.map(t=>`
+    <button class="ttype${t===dmType?' on':''}" onclick="dmSetType('${t}')">${ICONS[t]} ${t}</button>`).join('');
+}
+function dmSetType(t){ dmType=t; renderDmTypes(); }
+
+function renderDmMeals(){
+  const meals=getDayMeals(dmDate);
+  const goal=state.cfg.goal||2000;
+  const con=meals.filter(m=>m.type!=='Actividad').reduce((s,m)=>s+m.kcal,0);
+  const bur=meals.filter(m=>m.type==='Actividad').reduce((s,m)=>s+m.kcal,0);
+  const net=con-bur;
+  document.getElementById('dm-con').textContent=con.toLocaleString('es-ES');
+  document.getElementById('dm-bur').textContent=bur.toLocaleString('es-ES');
+  const netEl=document.getElementById('dm-net');
+  netEl.textContent=net.toLocaleString('es-ES');
+  netEl.className='mst-v '+(net>goal?'over':net>goal*.8?'warn':'ok');
+  const ml=document.getElementById('dm-meals');
+  if(!meals.length){ml.innerHTML='<div style="font-size:11px;color:var(--ink3);padding:6px 0">Sin comidas registradas.</div>';return;}
+  ml.innerHTML=meals.map((m,i)=>`
+    <div class="modal-meal-row${m.type==='Actividad'?' act':''}">
+      <span style="font-size:13px">${ICONS[m.type]||'🍴'}</span>
+      <span style="font-size:7px;font-weight:700;color:var(--ink3);width:44px;text-transform:uppercase;flex-shrink:0">${m.type}</span>
+      <span style="flex:1;font-size:11px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.desc}</span>
+      <span style="font-family:var(--fm);font-size:10px;margin-right:3px">${m.kcal.toLocaleString('es-ES')} kcal</span>
+      <button class="mm-del" data-i="${i}">×</button>
+    </div>`).join('');
+  ml.querySelectorAll('.mm-del').forEach(btn=>btn.addEventListener('click',()=>{
+    const meals=getDayMeals(dmDate);meals.splice(parseInt(btn.dataset.i),1);saveDayMeals(dmDate,meals);renderDmMeals();
+  }));
+}
+
+async function dmAnalyze(){
+  const desc=document.getElementById('dm-inp').value.trim();if(!desc)return;
+  const btn=document.getElementById('dm-go');btn.disabled=true;
+  document.getElementById('dm-spin').style.display='block';
+  const isAct=dmType==='Actividad';
+  const prompt=isAct
+    ?`Actividad: "${desc}". Persona ${state.cfg.weight||108}kg. Kcal quemadas. SOLO JSON: {"kcal":NUM,"feedback":"frase breve"}`
+    :`Alimento: "${desc}". SOLO JSON: {"kcal":NUM,"protein":NUM,"carbs":NUM,"fat":NUM}`;
+  try{
+    const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:150,messages:[{role:'user',content:prompt}]})});
+    const d=await r.json();
+    const j=JSON.parse((d.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim());
+    const meal={type:dmType,desc,kcal:Math.round(j.kcal||0),macros:isAct?null:{p:Math.round(j.protein||0),c:Math.round(j.carbs||0),f:Math.round(j.fat||0)}};
+    const meals=getDayMeals(dmDate);meals.push(meal);saveDayMeals(dmDate,meals);
+    document.getElementById('dm-inp').value='';renderDmMeals();
+    showToast('✅ Añadido: '+meal.kcal+' kcal');
+  }catch(e){showToast('❌ Error al calcular');}
+  btn.disabled=false;document.getElementById('dm-spin').style.display='none';
+}
+document.getElementById('dm-inp').addEventListener('keydown',e=>{if(e.key==='Enter')dmAnalyze();});
 
 window.addEventListener('load',()=>{if(getUID())startApp();});
 </script>
