@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
 <title>Nootrit</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fraunces:wght@700;900&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -705,15 +705,109 @@ canvas{width:100%!important}
 
 <div class="toast" id="toast"></div>
 
+<div id="err-screen" style="display:none;position:fixed;inset:0;background:#FF6B2B;color:#fff;font-family:sans-serif;padding:40px 24px;z-index:99999">
+  <div style="font-size:32px;margin-bottom:12px">😬</div>
+  <div style="font-size:18px;font-weight:900;margin-bottom:8px">Error al cargar</div>
+  <div id="err-msg" style="font-size:13px;opacity:.8;line-height:1.6"></div>
+  <button onclick="location.reload()" style="margin-top:20px;padding:12px 24px;background:#fff;color:#FF6B2B;border:none;border-radius:12px;font-size:14px;font-weight:900;cursor:pointer">Reintentar</button>
+</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
 <script>
 'use strict';
-window.onerror=(m,s,l)=>{console.error(m,s,l);showToast('Error: '+m,'red');return false;};
+
+function showErr(msg){
+  const el=document.getElementById('err-screen');
+  if(el){el.style.display='block';document.getElementById('err-msg').textContent=msg;}
+  console.error(msg);
+}
+window.onerror=(m,s,l)=>{showErr('JS Error: '+m+' ('+s+':'+l+')');return false;};
 
 // ── SUPABASE ───────────────────────────────────────────────────────────────
 const SB_URL='https://zwvcqhqyhtrsirolxdjm.supabase.co';
 const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp3dmNxaHF5aHRyc2lyb2x4ZGptIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0ODEyNzAsImV4cCI6MjA5MTA1NzI3MH0.9mlRJ5PvvZuMcPPqDdg6lV6Cw1U6L8FlkubvVSyttGI';
-const sb=(window.supabase||supabase).createClient(SB_URL,SB_KEY);
+// ── SUPABASE NATIVE CLIENT (no SDK needed) ────────────────────────────────
+const sb = {
+  _h: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+  _ah: {'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':'application/json'},
+  _token: null,
+
+  // Auth
+  auth: {
+    _session: null,
+    async signInWithPassword({email,password}){
+      const r=await fetch(SB_URL+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+      const d=await r.json();
+      if(d.error)return{error:{message:d.error_description||d.error}};
+      sb.auth._session=d;sb._token=d.access_token;
+      sb._ah={'apikey':SB_KEY,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json'};
+      localStorage.setItem('_ntk',JSON.stringify(d));
+      return{data:d,error:null};
+    },
+    async signUp({email,password}){
+      const r=await fetch(SB_URL+'/auth/v1/signup',{method:'POST',headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+      const d=await r.json();
+      if(d.error)return{error:{message:d.error_description||d.error}};
+      // auto-login after signup
+      if(d.access_token){sb.auth._session=d;sb._token=d.access_token;sb._ah={'apikey':SB_KEY,'Authorization':'Bearer '+d.access_token,'Content-Type':'application/json'};localStorage.setItem('_ntk',JSON.stringify(d));}
+      return{data:d,error:null};
+    },
+    async signOut(){localStorage.removeItem('_ntk');sb.auth._session=null;sb._token=null;},
+    async getSession(){
+      const stored=localStorage.getItem('_ntk');
+      if(!stored)return{data:{session:null}};
+      const s=JSON.parse(stored);
+      // verify token still valid
+      const r=await fetch(SB_URL+'/auth/v1/user',{headers:{'apikey':SB_KEY,'Authorization':'Bearer '+s.access_token}});
+      if(!r.ok){localStorage.removeItem('_ntk');return{data:{session:null}};}
+      const user=await r.json();
+      sb.auth._session={...s,user};sb._token=s.access_token;
+      sb._ah={'apikey':SB_KEY,'Authorization':'Bearer '+s.access_token,'Content-Type':'application/json'};
+      return{data:{session:{...s,user}}};
+    },
+    onAuthStateChange(cb){
+      // called manually after login/signup
+      sb.auth._cb=cb;
+    },
+    _fire(event,session){if(sb.auth._cb)sb.auth._cb(event,session);}
+  },
+
+  // DB query builder
+  from(table){
+    return new SbQuery(table);
+  }
+};
+
+class SbQuery{
+  constructor(t){this._t=t;this._filters=[];this._sel='*';this._ord=null;this._lim=null;this._single=false;this._method='GET';this._body=null;this._prefer='';}
+  select(s='*'){this._sel=s;return this;}
+  eq(c,v){this._filters.push(`${c}=eq.${encodeURIComponent(v)}`);return this;}
+  neq(c,v){this._filters.push(`${c}=neq.${encodeURIComponent(v)}`);return this;}
+  order(c,{ascending=true}={}){this._ord=`${c}.${ascending?'asc':'desc'}`;return this;}
+  limit(n){this._lim=n;return this;}
+  single(){this._single=true;return this;}
+  insert(data){this._method='POST';this._body=data;this._prefer='return=representation';return this;}
+  update(data){this._method='PATCH';this._body=data;this._prefer='return=representation';return this;}
+  upsert(data){this._method='POST';this._body=data;this._prefer='resolution=merge-duplicates,return=representation';return this;}
+  delete(){this._method='DELETE';this._prefer='return=minimal';return this;}
+  async _run(){
+    let url=SB_URL+'/rest/v1/'+this._t+'?select='+this._sel;
+    for(const f of this._filters)url+='&'+f;
+    if(this._ord)url+='&order='+this._ord;
+    if(this._lim)url+='&limit='+this._lim;
+    if(this._single)url+='&limit=1';
+    const opts={method:this._method,headers:{...sb._ah}};
+    if(this._prefer)opts.headers['Prefer']=this._prefer;
+    if(this._body)opts.body=JSON.stringify(this._body);
+    const r=await fetch(url,opts);
+    if(r.status===204)return{data:null,error:null};
+    const d=await r.json();
+    if(!r.ok)return{data:null,error:{message:d.message||d.error||JSON.stringify(d)}};
+    if(this._single){const arr=Array.isArray(d)?d:[d];return{data:arr[0]||null,error:null};}
+    return{data:d,error:null};
+  }
+  then(res,rej){return this._run().then(res,rej);}
+}
 
 const ICONS={Desayuno:'☀️',Comida:'🍽',Merienda:'🍎',Cena:'🌙',Snack:'🧁',Actividad:'🏃'};
 
@@ -804,7 +898,8 @@ async function doLogin(){
   const btn=document.getElementById('login-btn');btn.disabled=true;btn.textContent='Entrando…';
   const{error}=await sb.auth.signInWithPassword({email,password:pass});
   btn.disabled=false;btn.textContent='Entrar →';
-  if(error)showAuthErr(error.message==='Invalid login credentials'?'Email o contraseña incorrectos':error.message);
+  if(error){showAuthErr(error.message==='Invalid login credentials'?'Email o contraseña incorrectos':error.message);}
+  else{currentUser=data.user;document.getElementById('auth-screen').classList.add('gone');await loadProfile();}
 }
 async function doSignup(){
   const email=document.getElementById('su-email').value.trim(),pass=document.getElementById('su-pass').value,pass2=document.getElementById('su-pass2').value;
@@ -814,15 +909,23 @@ async function doSignup(){
   const btn=document.getElementById('su-btn');btn.disabled=true;btn.textContent='Creando…';
   const{error}=await sb.auth.signUp({email,password:pass});
   btn.disabled=false;btn.textContent='Crear cuenta →';
-  if(error)showAuthErr(error.message);
-  else showAuthErr('✅ Revisa tu email para confirmar la cuenta');
+  if(error){showAuthErr(error.message);}
+  else if(data.user){currentUser=data.user;document.getElementById('auth-screen').classList.add('gone');await loadProfile();}
+  else{showAuthErr('✅ Revisa tu email para confirmar la cuenta');}
 }
 function showAuthErr(m){document.getElementById('auth-err').textContent=m;}
 async function doSignout(){if(!confirm('¿Cerrar sesión?'))return;await sb.auth.signOut();location.reload();}
 
-sb.auth.onAuthStateChange(async(event,session)=>{
-  if(session?.user){currentUser=session.user;document.getElementById('auth-screen').classList.add('gone');await loadProfile();}
-});
+// Check existing session on load
+async function checkSession(){
+  const{data}=await sb.auth.getSession();
+  if(data.session?.user){
+    currentUser=data.session.user;
+    document.getElementById('auth-screen').classList.add('gone');
+    await loadProfile();
+  }
+}
+window.addEventListener('DOMContentLoaded', checkSession);
 
 // ── PROFILE / ONBOARDING ───────────────────────────────────────────────────
 async function loadProfile(){
