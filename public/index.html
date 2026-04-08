@@ -986,16 +986,24 @@ async function doLogin(){
   const pass=document.getElementById('login-pass').value;
   if(!email||!pass){showAuthErr('Rellena email y contraseña');return;}
   const btn=document.getElementById('login-btn');btn.disabled=true;btn.textContent='Entrando…';
-  showAuthErr('');
-  const res=await sb.auth.signInWithPassword({email,password:pass});
-  btn.disabled=false;btn.textContent='Entrar →';
-  if(res.error){
-    const msg=res.error.message;
-    showAuthErr(msg.includes('Invalid')||msg.includes('credentials')?'Email o contraseña incorrectos':msg);
-  } else {
-    currentUser=res.data.user;
-    document.getElementById('auth-screen').classList.add('gone');
-    await loadProfile();
+  showAuthErr('Conectando…');
+  try {
+    const res=await sb.auth.signInWithPassword({email,password:pass});
+    btn.disabled=false;btn.textContent='Entrar →';
+    if(res.error){
+      const msg=res.error.message||'';
+      showAuthErr(msg.includes('Invalid')||msg.includes('credentials')||msg.includes('invalid')?
+        'Email o contraseña incorrectos. La contraseña actual es: Nootrit2026!':msg||'Error desconocido');
+    } else if(res.data?.user){
+      currentUser=res.data.user;
+      document.getElementById('auth-screen').classList.add('gone');
+      await loadProfile();
+    } else {
+      showAuthErr('Respuesta inesperada del servidor');
+    }
+  } catch(e){
+    btn.disabled=false;btn.textContent='Entrar →';
+    showAuthErr('Error de conexión: '+e.message);
   }
 }
 
@@ -1045,11 +1053,18 @@ async function doSignout(){
 
 // ── SESSION RESTORE ON LOAD ────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async function(){
-  const user = await sb.auth.refreshSession();
-  if(user){
-    currentUser=user;
-    document.getElementById('auth-screen').classList.add('gone');
-    await loadProfile();
+  // Always show auth screen first, then check session
+  document.getElementById('auth-screen').style.display='flex';
+  try {
+    const user = await sb.auth.refreshSession();
+    if(user && user.id){
+      currentUser=user;
+      document.getElementById('auth-screen').classList.add('gone');
+      await loadProfile();
+    }
+  } catch(e){
+    console.error('Session restore failed:', e);
+    // Stay on auth screen - user will login manually
   }
 });
 
