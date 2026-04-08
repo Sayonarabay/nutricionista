@@ -1190,7 +1190,7 @@ function renderSuggestions(){
     </div>`).join('');
 }
 
-let selectedKBItem=null,currentQty=1,acFocusIdx=-1;
+let acFocusIdx=-1;
 
 function selectKBItem(idx){
   const f=foodKB[idx];if(!f)return;
@@ -1366,7 +1366,6 @@ function showFeedback(desc,kcal,isAct,tip){
 // ── EDIT / DELETE ──────────────────────────────────────────────────────────
 let editMealId=null;
 // ── INLINE EDIT ───────────────────────────────────────────────────────────
-let editMealId=null;
 function startInlineEdit(i){
   const meal=window._meals[i];if(!meal)return;
   editMealId=meal.id;
