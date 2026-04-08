@@ -367,6 +367,21 @@ canvas{width:100%!important}
 .toast.green{background:var(--green-d)}
 .toast.orange{background:var(--orange)}
 
+/* ── KB SELECTED ITEM ── */
+.qty-n{font-family:var(--fd);font-size:20px;font-weight:900;color:var(--ink);min-width:26px;text-align:center}
+.qty-unit{font-size:11px;color:var(--ink3);font-weight:700}
+.qty-btn{width:30px;height:30px;border-radius:50%;border:2px solid var(--bg3);background:var(--white);font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink2);transition:all .15s;flex-shrink:0}
+.qty-btn:hover{border-color:var(--orange);color:var(--orange);transform:scale(1.1)}
+/* ── INLINE EDIT ON MEAL ITEM ── */
+.meal-item .mi-inline-edit{display:none;position:absolute;inset:0;background:var(--white);border:2px solid var(--orange);border-radius:var(--r);padding:6px 10px;align-items:center;gap:6px;z-index:10}
+.meal-item:hover .mi-inline-edit{display:flex}
+.mi-ie-desc{flex:1;font-size:12px;font-weight:700;border:none;background:transparent;color:var(--ink);font-family:var(--fb);outline:none}
+.mi-ie-kcal{width:60px;font-size:12px;font-weight:900;font-family:var(--fd);border:1.5px solid var(--bg3);border-radius:6px;padding:3px 6px;text-align:center;background:var(--bg);color:var(--ink)}
+.mi-ie-kcal:focus{outline:none;border-color:var(--orange)}
+.mi-ie-save{background:var(--orange);color:#fff;border:none;border-radius:6px;padding:5px 9px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
+.mi-ie-del{background:none;border:none;cursor:pointer;font-size:16px;color:var(--ink3);padding:2px 4px}
+.mi-ie-del:hover{color:var(--red)}
+
 /* ── DESKTOP FIXES ── */
 @media(min-width:600px){
   .page{padding:14px 20px 0}
@@ -519,6 +534,7 @@ canvas{width:100%!important}
     <div class="thinking" id="thinking"><span class="spin-dot"></span>Calculando con IA…</div>
 
     <div class="input-wrap anim-up-3">
+      <!-- Type selector -->
       <div class="type-row">
         <button class="ttype on" data-t="Desayuno" onclick="setType(this)">☀️ Desayuno</button>
         <button class="ttype" data-t="Comida" onclick="setType(this)">🍽 Comida</button>
@@ -527,18 +543,32 @@ canvas{width:100%!important}
         <button class="ttype" data-t="Snack" onclick="setType(this)">🧁 Snack</button>
         <button class="ttype" data-t="Actividad" onclick="setType(this)">🏃 Actividad</button>
       </div>
-      <div class="suggestions" id="suggestions"></div>
-      <div class="qty-row" id="qty-row" style="display:none">
-        <span class="qty-lbl">Cantidad:</span>
-        <button class="qty-btn" onclick="changeQty(-1)">−</button>
-        <span class="qty-n" id="qty-n">1</span>
-        <span class="qty-unit" id="qty-unit">porción</span>
-        <button class="qty-btn" onclick="changeQty(1)">+</button>
+      <!-- KB item selected: quantity picker -->
+      <div id="kb-selected" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--green-l);border:1.5px solid #6EE7B7;border-radius:var(--r);padding:10px 13px;margin-bottom:9px">
+          <div>
+            <div style="font-size:13px;font-weight:900;color:var(--green-d)" id="kbs-name">—</div>
+            <div style="font-size:10px;color:var(--green-d);margin-top:1px" id="kbs-kcal-info">—</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <button class="qty-btn" onclick="changeQty(-1)">−</button>
+            <span class="qty-n" id="qty-n">1</span>
+            <span class="qty-unit" id="qty-unit">ud</span>
+            <button class="qty-btn" onclick="changeQty(1)">+</button>
+            <button onclick="clearKBSelected()" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--ink3);padding:2px 4px">✕</button>
+          </div>
+        </div>
+        <button class="go-btn" style="width:100%;margin-bottom:6px" onclick="analyzeKB()">Añadir <span id="kbs-total-kcal">—</span> kcal →</button>
       </div>
-      <div class="inp-row">
-        <div class="autocomplete" id="autocomplete"></div>
-        <input class="food-inp" id="food-inp" type="text" placeholder="Ej: café con leche, pollo a la plancha…" autocomplete="off"/>
-        <button class="go-btn" id="go-btn" onclick="analyze()">→</button>
+      <!-- Freetype input with autocomplete -->
+      <div id="free-input-area">
+        <div style="position:relative">
+          <div class="autocomplete" id="autocomplete"></div>
+          <input class="food-inp" id="food-inp" type="text" placeholder="Escribe un alimento…" autocomplete="off"/>
+        </div>
+        <!-- Frecuentes chips -->
+        <div class="suggestions" id="suggestions"></div>
+        <button class="go-btn" style="width:100%;margin-top:8px" id="go-btn" onclick="analyze()">→ Añadir</button>
       </div>
     </div>
 
@@ -791,18 +821,23 @@ class SbQuery{
   upsert(data){this._method='POST';this._body=data;this._prefer='resolution=merge-duplicates,return=representation';return this;}
   delete(){this._method='DELETE';this._prefer='return=minimal';return this;}
   async _run(){
-    let url=SB_URL+'/rest/v1/'+this._t+'?select='+this._sel;
-    for(const f of this._filters)url+='&'+f;
-    if(this._ord)url+='&order='+this._ord;
-    if(this._lim)url+='&limit='+this._lim;
-    if(this._single)url+='&limit=1';
+    // For GET: include select; for mutations: filters go in URL, body is data
+    const isGet=this._method==='GET';
+    let url=SB_URL+'/rest/v1/'+this._t;
+    const params=[];
+    if(isGet)params.push('select='+this._sel);
+    for(const f of this._filters)params.push(f);
+    if(this._ord)params.push('order='+this._ord);
+    if(this._lim)params.push('limit='+this._lim);
+    if(this._single&&isGet)params.push('limit=1');
+    if(params.length)url+='?'+params.join('&');
     const opts={method:this._method,headers:{...sb._ah}};
     if(this._prefer)opts.headers['Prefer']=this._prefer;
     if(this._body)opts.body=JSON.stringify(this._body);
     const r=await fetch(url,opts);
-    if(r.status===204)return{data:null,error:null};
-    const d=await r.json();
-    if(!r.ok)return{data:null,error:{message:d.message||d.error||JSON.stringify(d)}};
+    if(r.status===204||r.status===200&&this._method==='DELETE')return{data:null,error:null};
+    let d;try{d=await r.json();}catch(e){return{data:null,error:{message:'Parse error'}};}
+    if(!r.ok)return{data:null,error:{message:d.message||d.hint||d.error||JSON.stringify(d)}};
     if(this._single){const arr=Array.isArray(d)?d:[d];return{data:arr[0]||null,error:null};}
     return{data:d,error:null};
   }
@@ -896,10 +931,10 @@ async function doLogin(){
   const email=document.getElementById('login-email').value.trim(),pass=document.getElementById('login-pass').value;
   if(!email||!pass){showAuthErr('Rellena todos los campos');return;}
   const btn=document.getElementById('login-btn');btn.disabled=true;btn.textContent='Entrando…';
-  const{error}=await sb.auth.signInWithPassword({email,password:pass});
+  const res=await sb.auth.signInWithPassword({email,password:pass});
   btn.disabled=false;btn.textContent='Entrar →';
-  if(error){showAuthErr(error.message==='Invalid login credentials'?'Email o contraseña incorrectos':error.message);}
-  else{currentUser=data.user;document.getElementById('auth-screen').classList.add('gone');await loadProfile();}
+  if(res.error){showAuthErr(res.error.message==='Invalid login credentials'?'Email o contraseña incorrectos':res.error.message);}
+  else{currentUser=res.data.user;document.getElementById('auth-screen').classList.add('gone');await loadProfile();}
 }
 async function doSignup(){
   const email=document.getElementById('su-email').value.trim(),pass=document.getElementById('su-pass').value,pass2=document.getElementById('su-pass2').value;
@@ -907,11 +942,11 @@ async function doSignup(){
   if(pass!==pass2){showAuthErr('Las contraseñas no coinciden');return;}
   if(pass.length<6){showAuthErr('Mínimo 6 caracteres');return;}
   const btn=document.getElementById('su-btn');btn.disabled=true;btn.textContent='Creando…';
-  const{error}=await sb.auth.signUp({email,password:pass});
+  const res=await sb.auth.signUp({email,password:pass});
   btn.disabled=false;btn.textContent='Crear cuenta →';
-  if(error){showAuthErr(error.message);}
-  else if(data.user){currentUser=data.user;document.getElementById('auth-screen').classList.add('gone');await loadProfile();}
-  else{showAuthErr('✅ Revisa tu email para confirmar la cuenta');}
+  if(res.error){showAuthErr(res.error.message);}
+  else if(res.data?.user){currentUser=res.data.user;document.getElementById('auth-screen').classList.add('gone');await loadProfile();}
+  else{showAuthErr('✅ Cuenta creada. Ya puedes entrar.');}
 }
 function showAuthErr(m){document.getElementById('auth-err').textContent=m;}
 async function doSignout(){if(!confirm('¿Cerrar sesión?'))return;await sb.auth.signOut();location.reload();}
@@ -1025,133 +1060,183 @@ async function kbUpsert(name,kcal,unit='porción'){
   }
   foodKB.sort((a,b)=>b.times_used-a.times_used);
 }
+// ── KB SEARCH & SUGGESTIONS ───────────────────────────────────────────────
 function kbSearch(q){
   if(!q||q.length<2)return[];
-  const lq=q.toLowerCase();
-  return foodKB.filter(f=>f.name.includes(lq)).slice(0,6);
+  const lq=q.toLowerCase().trim();
+  // score: starts-with > contains
+  const scored=foodKB
+    .filter(f=>f.name.includes(lq)||(f.aliases||[]).some(a=>a.includes(lq)))
+    .map(f=>({...f,score:(f.name.startsWith(lq)?100:0)+f.times_used}))
+    .sort((a,b)=>b.score-a.score);
+  return scored.slice(0,7);
 }
-function renderSuggestions(type){
-  // show recent + frequent for this type (or all if Actividad)
-  const recent=foodKB.filter(f=>f.times_used>=2).slice(0,5);
+
+function renderSuggestions(){
+  // top 6 most used items as chips
+  const top=foodKB.filter(f=>f.times_used>=1).slice(0,6);
   const sec=document.getElementById('suggestions');
-  if(!recent.length){sec.innerHTML='';return;}
-  sec.innerHTML=recent.map(f=>`
-    <div class="sug-chip" onclick="useSuggestion('${f.name.replace(/'/g,"\\'")}',${f.kcal_per_unit},'${f.unit||'porción'}')">
+  if(!top.length){sec.innerHTML='';return;}
+  sec.innerHTML=top.map(f=>`
+    <div class="sug-chip" onclick="selectKBItem(${foodKB.indexOf(f)})">
       <span class="sc-n">${f.name}</span>
       <span class="sc-k">${f.kcal_per_unit} kcal</span>
     </div>`).join('');
 }
-function useSuggestion(name,kcal,unit){
-  document.getElementById('food-inp').value=name;
-  selectedKBItem={name,kcal,unit};
-  currentQty=1;
-  const qr=document.getElementById('qty-row');
-  document.getElementById('qty-n').textContent=1;
-  document.getElementById('qty-unit').textContent=unit;
-  qr.style.display='flex';
+
+let selectedKBItem=null,currentQty=1,acFocusIdx=-1;
+
+function selectKBItem(idx){
+  const f=foodKB[idx];if(!f)return;
+  selectedKBItem=f;currentQty=1;
+  document.getElementById('kbs-name').textContent=f.name;
+  document.getElementById('qty-n').textContent='1';
+  document.getElementById('qty-unit').textContent=f.unit_label||f.unit||'ud';
+  updateKBSelectedDisplay();
+  document.getElementById('kb-selected').style.display='block';
+  document.getElementById('free-input-area').style.display='none';
   hideAutocomplete();
 }
-function changeQty(delta){
-  currentQty=Math.max(0.5,currentQty+delta);
-  document.getElementById('qty-n').textContent=currentQty%1===0?currentQty:currentQty.toFixed(1);
+
+function updateKBSelectedDisplay(){
+  if(!selectedKBItem)return;
+  const total=Math.round(selectedKBItem.kcal_per_unit*currentQty);
+  document.getElementById('kbs-kcal-info').textContent=
+    `${currentQty%1===0?currentQty:currentQty.toFixed(1)} × ${selectedKBItem.kcal_per_unit} kcal`;
+  document.getElementById('kbs-total-kcal').textContent=total.toLocaleString('es-ES');
 }
 
-// Autocomplete
-let acFocusIdx=-1;
+function changeQty(delta){
+  currentQty=Math.max(0.5,Math.round((currentQty+delta)*2)/2);
+  document.getElementById('qty-n').textContent=currentQty%1===0?currentQty:currentQty.toFixed(1);
+  updateKBSelectedDisplay();
+}
+
+function clearKBSelected(){
+  selectedKBItem=null;currentQty=1;
+  document.getElementById('kb-selected').style.display='none';
+  document.getElementById('free-input-area').style.display='block';
+  document.getElementById('food-inp').value='';
+  document.getElementById('food-inp').focus();
+}
+
+// KB add from selected item (0 tokens)
+async function analyzeKB(){
+  if(!selectedKBItem)return;
+  const kcal=Math.round(selectedKBItem.kcal_per_unit*currentQty);
+  const qtyStr=currentQty===1?'':currentQty%1===0?currentQty+'x ':currentQty.toFixed(1)+'x ';
+  const desc=qtyStr+selectedKBItem.name;
+  await saveMeal(desc,curType,kcal);
+  await kbUpsert(selectedKBItem.name,selectedKBItem.kcal_per_unit,selectedKBItem.unit_label||'ud');
+  clearKBSelected();
+  showFeedback(desc,kcal,curType==='Actividad','📚 De tu KB — 0 tokens usados');
+  await finishAdd();
+}
+
+// Autocomplete on free input
 document.getElementById('food-inp').addEventListener('input',function(){
-  selectedKBItem=null;document.getElementById('qty-row').style.display='none';currentQty=1;
   const q=this.value.trim();
   const results=kbSearch(q);
   const ac=document.getElementById('autocomplete');
   if(!results.length){ac.classList.remove('on');return;}
-  ac.innerHTML=results.map((f,i)=>`<div class="ac-item" data-i="${i}" onclick="pickAC(${i})"><span class="ac-name">${f.name}</span><span class="ac-meta">${f.kcal_per_unit} kcal · ${f.times_used}x</span></div>`).join('');
+  ac.innerHTML=results.map((f,i)=>`
+    <div class="ac-item" data-i="${i}">
+      <span class="ac-name">${highlightMatch(f.name,q)}</span>
+      <span class="ac-meta">${f.kcal_per_unit} kcal · ${f.times_used}x</span>
+    </div>`).join('');
   ac._results=results;acFocusIdx=-1;ac.classList.add('on');
+  ac.querySelectorAll('.ac-item').forEach((el,i)=>el.addEventListener('mousedown',e=>{e.preventDefault();pickAC(i);}));
 });
-document.getElementById('food-inp').addEventListener('blur',()=>setTimeout(hideAutocomplete,200));
+
+function highlightMatch(name,q){
+  if(!q)return name;
+  const idx=name.toLowerCase().indexOf(q.toLowerCase());
+  if(idx<0)return name;
+  return name.slice(0,idx)+'<strong>'+name.slice(idx,idx+q.length)+'</strong>'+name.slice(idx+q.length);
+}
+
+document.getElementById('food-inp').addEventListener('blur',()=>setTimeout(hideAutocomplete,150));
 document.getElementById('food-inp').addEventListener('keydown',function(e){
   const ac=document.getElementById('autocomplete');
   const items=ac.querySelectorAll('.ac-item');
   if(e.key==='ArrowDown'){e.preventDefault();acFocusIdx=Math.min(acFocusIdx+1,items.length-1);items.forEach((el,i)=>el.classList.toggle('focused',i===acFocusIdx));}
   else if(e.key==='ArrowUp'){e.preventDefault();acFocusIdx=Math.max(acFocusIdx-1,0);items.forEach((el,i)=>el.classList.toggle('focused',i===acFocusIdx));}
   else if(e.key==='Enter'&&acFocusIdx>=0){e.preventDefault();pickAC(acFocusIdx);}
-  else if(e.key==='Enter'&&acFocusIdx<0){analyze();}
+  else if(e.key==='Enter'){analyze();}
   else if(e.key==='Escape')hideAutocomplete();
 });
 function pickAC(i){
   const r=document.getElementById('autocomplete')._results[i];
-  useSuggestion(r.name,r.kcal_per_unit,r.unit||'porción');
+  selectKBItem(foodKB.indexOf(r));
 }
 function hideAutocomplete(){const ac=document.getElementById('autocomplete');ac.classList.remove('on');acFocusIdx=-1;}
 
-// ── ANALYZE ────────────────────────────────────────────────────────────────
+// ── ANALYZE (free text → AI) ───────────────────────────────────────────────
 let curType='Desayuno';
 function setType(btn){
   document.querySelectorAll('.ttype').forEach(b=>b.classList.remove('on'));
   btn.classList.add('on');curType=btn.dataset.t;
-  renderSuggestions(curType);
+  renderSuggestions();
 }
 
 async function analyze(){
   const desc=document.getElementById('food-inp').value.trim();if(!desc)return;
-  const goal=profile.goal_kcal||2000,isAct=curType==='Actividad';
-  const btn=document.getElementById('go-btn');btn.disabled=true;
+  const isAct=curType==='Actividad';
+  document.getElementById('go-btn').disabled=true;
   document.getElementById('thinking').style.display='block';
   document.getElementById('fb-box').style.display='none';
 
-  let kcal=0;
+  // Try loose KB match first (e.g. "2 cafes" → "café")
+  const norm=desc.toLowerCase().replace(/[0-9]+x?\s*/,'').trim();
+  const qty=extractQty(desc);
+  const kbLoose=foodKB.find(f=>
+    norm===f.name||norm.includes(f.name)||(f.aliases||[]).some(a=>norm.includes(a))
+  );
 
-  // KB HIT — no API call needed
-  if(selectedKBItem){
-    kcal=Math.round(selectedKBItem.kcal*currentQty);
-    await saveMeal(desc,curType,kcal,null);
-    await kbUpsert(selectedKBItem.name,selectedKBItem.kcal,selectedKBItem.unit);
-    selectedKBItem=null;currentQty=1;
-    document.getElementById('qty-row').style.display='none';
+  if(kbLoose&&!isAct){
+    // KB loose hit — 0 tokens
+    const kcal=Math.round(kbLoose.kcal_per_unit*qty.qty);
+    await saveMeal(qty.qty>1?qty.qty+'x '+kbLoose.name:desc,curType,kcal);
+    await kbUpsert(kbLoose.name,kbLoose.kcal_per_unit,kbLoose.unit_label||'ud');
+    showFeedback(desc,kcal,false,'📚 De tu KB — 0 tokens');
   } else {
-    // Check KB by exact/close match first
-    const norm=desc.toLowerCase().trim();
-    const kbMatch=foodKB.find(f=>norm.includes(f.name)||f.name.includes(norm));
-    const qty=extractQty(desc);
-
-    if(kbMatch&&!norm.match(/\d+\s*(g|gr|ml|kg)/)){
-      kcal=Math.round(kbMatch.kcal_per_unit*qty.qty);
-      await saveMeal(desc,curType,kcal,null);
-      await kbUpsert(kbMatch.name,kbMatch.kcal_per_unit,kbMatch.unit);
-      showFeedback(desc,kcal,false,`De tu base de datos personal · ${qty.qty}x ${kbMatch.kcal_per_unit} kcal/u`);
-    } else {
-      // Call AI
-      const t=totals();
-      const prompt=isAct
-        ?`Actividad: "${desc}". Persona ${profile.weight_kg||80}kg. SOLO JSON: {"kcal":NUM,"name":"nombre_corto"}`
-        :`Alimento/comida: "${desc}". SOLO JSON: {"kcal":NUM,"name":"nombre_corto_normalizado","unit":"porción|vaso|taza|pieza|ración","tip":"consejo nutricional breve en castellano"}
-Kcal totales para la cantidad descrita. nombre_corto: nombre genérico singular (ej: "café con leche", "huevo duro").`;
-      try{
-        const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:150,messages:[{role:'user',content:prompt}]})});
-        const d=await r.json();
-        const j=JSON.parse((d.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim());
-        kcal=Math.round(j.kcal||0);
-        await saveMeal(desc,curType,kcal,null);
-        // Save to KB
-        if(j.name&&!isAct)await kbUpsert(j.name,Math.round(kcal/(qty.qty||1)),j.unit||'porción');
-        showFeedback(desc,kcal,isAct,j.tip||'');
-      }catch(e){showToast('❌ Error al calcular');btn.disabled=false;document.getElementById('thinking').style.display='none';return;}
+    // Call AI — only when truly needed
+    const prompt=isAct
+      ?`Actividad física: "${desc}". Persona ${profile.weight_kg||80}kg. SOLO JSON sin texto extra: {"kcal":NUM,"name":"nombre_corto"}`
+      :`Alimento: "${desc}". SOLO JSON sin texto extra: {"kcal":NUM,"name":"nombre_normalizado_singular","unit_label":"1 taza|1 pieza|100g|1 ración|1 vaso","tip":"consejo muy breve"}
+nombre_normalizado_singular = nombre genérico en singular sin cantidad (ej: "café con leche", "huevo duro", "plátano").`;
+    try{
+      const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:120,messages:[{role:'user',content:prompt}]})});
+      const d=await r.json();
+      const j=JSON.parse((d.content?.[0]?.text||'{}').replace(/```(?:json)?|```/g,'').trim());
+      const kcal=Math.round(j.kcal||0);
+      await saveMeal(desc,curType,kcal);
+      if(j.name&&!isAct)await kbUpsert(j.name,Math.round(kcal/(qty.qty||1)),j.unit_label||'ud');
+      showFeedback(desc,kcal,isAct,j.tip||'');
+    }catch(e){
+      showToast('❌ Error al calcular');
+      document.getElementById('go-btn').disabled=false;
+      document.getElementById('thinking').style.display='none';
+      return;
     }
   }
 
   document.getElementById('food-inp').value='';
-  document.getElementById('qty-row').style.display='none';
-  currentQty=1;
-  await loadCalHistory();
-  updateStreak();
-  render();
-  btn.disabled=false;document.getElementById('thinking').style.display='none';
+  await finishAdd();
 }
 
 function extractQty(desc){
   const m=desc.match(/^(\d+(\.\d+)?)\s*x?\s*/i);
-  if(m)return{qty:parseFloat(m[1]),rest:desc.slice(m[0].length)};
-  return{qty:1,rest:desc};
+  return m?{qty:parseFloat(m[1]),rest:desc.slice(m[0].length)}:{qty:1,rest:desc};
+}
+
+async function finishAdd(){
+  await loadCalHistory();
+  updateStreak();
+  render();
+  document.getElementById('go-btn').disabled=false;
+  document.getElementById('thinking').style.display='none';
 }
 
 async function saveMeal(desc,type,kcal,macros){
@@ -1174,6 +1259,51 @@ function showFeedback(desc,kcal,isAct,tip){
 
 // ── EDIT / DELETE ──────────────────────────────────────────────────────────
 let editMealId=null;
+// ── INLINE EDIT ───────────────────────────────────────────────────────────
+let editMealId=null;
+function startInlineEdit(i){
+  const meal=window._meals[i];if(!meal)return;
+  editMealId=meal.id;
+  // Build inline edit bar replacing the meal row
+  const ml=document.getElementById('meals-list');
+  const rows=ml.querySelectorAll('.meal-item');
+  if(!rows[i])return;
+  const row=rows[i];
+  // Store original for cancel
+  row.dataset.orig=JSON.stringify({desc:meal.description,kcal:meal.kcal});
+  row.innerHTML=`
+    <span style="font-size:15px;flex-shrink:0">${ICONS[meal.type]||'🍴'}</span>
+    <input class="mi-ie-desc" id="ie-desc-${i}" value="${meal.description.replace(/"/g,'&quot;')}" style="flex:1;font-size:12px;font-weight:700;border:none;background:transparent;color:var(--ink);font-family:var(--fb);outline:none;min-width:0"/>
+    <input class="mi-ie-kcal" id="ie-kcal-${i}" type="number" value="${meal.kcal}" style="width:64px;font-size:12px;font-weight:900;border:1.5px solid var(--bg3);border-radius:6px;padding:4px 6px;text-align:center;font-family:var(--fd)"/>
+    <span style="font-size:10px;color:var(--ink3);font-weight:700">kcal</span>
+    <button class="mi-ie-save" onclick="saveInlineEdit(${i})">✓</button>
+    <button class="mi-ie-del" onclick="deleteInlineEdit(${i})">🗑</button>
+    <button class="mi-ie-del" onclick="cancelInlineEdit(${i})" style="font-size:12px">✕</button>`;
+  row.style.background='var(--orange-l)';
+  row.style.borderColor='var(--orange)';
+  document.getElementById('ie-desc-'+i)?.focus();
+  // Enter to save
+  document.getElementById('ie-kcal-'+i)?.addEventListener('keydown',e=>{if(e.key==='Enter')saveInlineEdit(i);});
+  document.getElementById('ie-desc-'+i)?.addEventListener('keydown',e=>{if(e.key==='Enter')saveInlineEdit(i);if(e.key==='Escape')cancelInlineEdit(i);});
+}
+async function saveInlineEdit(i){
+  const meal=window._meals[i];if(!meal)return;
+  const desc=document.getElementById('ie-desc-'+i)?.value.trim()||meal.description;
+  const kcal=parseInt(document.getElementById('ie-kcal-'+i)?.value)||meal.kcal;
+  await sb.from('meal_history').update({description:desc,kcal}).eq('id',meal.id);
+  const idx=todayMeals.findIndex(m=>m.id===meal.id);
+  if(idx>=0){todayMeals[idx].description=desc;todayMeals[idx].kcal=kcal;}
+  await loadCalHistory();render();showToast('✅ Guardado');
+}
+async function deleteInlineEdit(i){
+  const meal=window._meals[i];if(!meal)return;
+  if(!confirm('¿Eliminar?'))return;
+  await sb.from('meal_history').update({deleted:true}).eq('id',meal.id);
+  todayMeals=todayMeals.filter(m=>m.id!==meal.id);
+  await loadCalHistory();render();showToast('🗑️ Eliminado');
+}
+function cancelInlineEdit(i){render();}
+// Keep modal for day-history edits
 function openEditModal(meal){
   editMealId=meal.id;
   document.getElementById('edit-desc').value=meal.description;
@@ -1334,16 +1464,16 @@ function render(){
   if(!todayMeals.length){ml.innerHTML='<div class="meal-empty">Nada todavía — ¡registra tu primera comida!</div>';}
   else{
     ml.innerHTML=todayMeals.map((m,i)=>`
-      <div class="meal-item${m.type==='Actividad'?' act':''}" style="animation-delay:${i*.04}s" onclick="openEditModal(window._meals[${i}])">
+      <div class="meal-item${m.type==='Actividad'?' act':''}" style="animation-delay:${i*.04}s;position:relative">
         <span class="mi-em">${ICONS[m.type]||'🍴'}</span>
         <span class="mi-tp">${m.type}</span>
         <span class="mi-ds">${m.description}</span>
-        <span class="mi-kc">${m.kcal.toLocaleString('es-ES')} kcal</span>
-        <span class="mi-edit">✏️</span>
+        <span class="mi-kc" id="mi-kc-${i}">${m.kcal.toLocaleString('es-ES')} kcal</span>
+        <button class="mi-edit" onclick="startInlineEdit(${i})" title="Editar">✏️</button>
       </div>`).join('');
     window._meals=[...todayMeals];
   }
-  renderAlerts();renderSuggestions(curType);
+  renderAlerts();renderSuggestions();
   document.getElementById('nav-streak').textContent=profile.streak||0;
   renderWeight();renderProgress();renderKBList();
   // settings
