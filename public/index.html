@@ -785,18 +785,25 @@ const sb = {
   auth: {
     async signInWithPassword({email, password}){
       try {
+        const controller = new AbortController();
+        const timeout = setTimeout(()=>controller.abort(), 10000);
         const r = await fetch(SB_URL+'/auth/v1/token?grant_type=password', {
           method:'POST',
           headers:{'Content-Type':'application/json','apikey':SB_KEY},
-          body:JSON.stringify({email,password})
+          body:JSON.stringify({email,password}),
+          signal:controller.signal
         });
+        clearTimeout(timeout);
         const d = await r.json();
         if(!r.ok) return {data:null, error:{message: d.error_description||d.msg||'Login incorrecto'}};
         _authToken = d.access_token;
         _authUser = d.user;
         localStorage.setItem('_sb_session', JSON.stringify({access_token:d.access_token, user:d.user}));
         return {data:{user:d.user, session:d}, error:null};
-      } catch(e) { return {data:null, error:{message:e.message}}; }
+      } catch(e) {
+        if(e.name==='AbortError') return {data:null, error:{message:'Timeout - comprueba tu conexión'}};
+        return {data:null, error:{message:e.message}};
+      }
     },
 
     async signUp({email, password}){
@@ -993,17 +1000,18 @@ async function doLogin(){
     if(res.error){
       const msg=res.error.message||'';
       showAuthErr(msg.includes('Invalid')||msg.includes('credentials')||msg.includes('invalid')?
-        'Email o contraseña incorrectos. La contraseña actual es: Nootrit2026!':msg||'Error desconocido');
+        'Email o contraseña incorrectos':msg||'Error desconocido');
     } else if(res.data?.user){
       currentUser=res.data.user;
       document.getElementById('auth-screen').classList.add('gone');
-      await loadProfile();
+      try{ await loadProfile(); }
+      catch(e2){ showAuthErr('Error cargando perfil: '+e2.message); }
     } else {
-      showAuthErr('Respuesta inesperada del servidor');
+      showAuthErr('Sin respuesta del servidor - refresca la página');
     }
   } catch(e){
     btn.disabled=false;btn.textContent='Entrar →';
-    showAuthErr('Error de conexión: '+e.message);
+    showAuthErr('Error: '+e.message);
   }
 }
 
