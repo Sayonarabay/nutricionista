@@ -1312,7 +1312,7 @@ async function analyze(){
       :`Alimento: "${desc}". SOLO JSON sin texto extra: {"kcal":NUM,"name":"nombre_normalizado_singular","unit_label":"1 taza|1 pieza|100g|1 ración|1 vaso","tip":"consejo muy breve"}
 nombre_normalizado_singular = nombre genérico en singular sin cantidad (ej: "café con leche", "huevo duro", "plátano").`;
     try{
-      const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      const r=await fetch('https://zwvcqhqyhtrsirolxdjm.supabase.co/functions/v1/ai',{method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:120,messages:[{role:'user',content:prompt}]})});
       const d=await r.json();
       const j=JSON.parse((d.content?.[0]?.text||'{}').replace(/```(?:json)?|```/g,'').trim());
@@ -1748,7 +1748,7 @@ async function dmAnalyze(){
   if(kbMatch){kcal=kbMatch.kcal_per_unit;}
   else{
     try{
-      const r=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:80,messages:[{role:'user',content:`${isAct?'Actividad':'Alimento'}: "${desc}". SOLO JSON: {"kcal":NUM}`}]})});
+      const r=await fetch('https://zwvcqhqyhtrsirolxdjm.supabase.co/functions/v1/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:80,messages:[{role:'user',content:`${isAct?'Actividad':'Alimento'}: "${desc}". SOLO JSON: {"kcal":NUM}`}]})});
       const d=await r.json();kcal=Math.round(JSON.parse((d.content?.[0]?.text||'{}').replace(/```json|```/g,'').trim()).kcal||0);
     }catch(e){showToast('❌ Error');btn.disabled=false;document.getElementById('dm-spin').style.display='none';return;}
   }

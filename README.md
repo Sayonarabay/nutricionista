@@ -1,41 +1,48 @@
-# NutriTrack con Supabase 🥗☁️
+# Nootrit
+
+App de seguimiento nutricional personal.
 
 ## Estructura
+
 ```
-nutritrack/
-├── public/index.html   ← App completa
-├── api/chat.js         ← Proxy Anthropic
-├── vercel.json
-└── supabase_schema.sql ← Ejecutar en Supabase SQL Editor
+public/index.html          → App completa (HTML + CSS + JS en un solo archivo)
+supabase/functions/ai/     → Edge Function proxy de Anthropic API
+supabase/functions/app/    → Edge Function que sirve el HTML (deploy en Supabase)
 ```
 
-## Setup en 3 pasos
+## URLs de producción (Supabase)
 
-### 1. Supabase (base de datos)
-1. Crea proyecto en supabase.com → nombre: `nutritrack`
-2. Ve a **SQL Editor** → New Query
-3. Copia y pega todo el contenido de `supabase_schema.sql` → Run
-4. Ve a **Project Settings → API** y copia:
-   - **Project URL** → `https://xxxx.supabase.co`
-   - **anon public key** → `eyJhbGci...`
+- App: https://zwvcqhqyhtrsirolxdjm.supabase.co/functions/v1/app
+- AI proxy: https://zwvcqhqyhtrsirolxdjm.supabase.co/functions/v1/ai
 
-### 2. GitHub + Vercel
-1. Crea repo en GitHub, sube los archivos respetando la estructura
-2. Importa en vercel.com
-3. En Vercel → Settings → Environment Variables añade:
-   - `ANTHROPIC_API_KEY` = `sk-ant-...`
-4. Redeploy
+## Deploy
 
-### 3. Configurar Supabase en la app
-1. Abre tu URL de Vercel
-2. Ve a **Config** en la app
-3. Introduce la Supabase URL y la Anon Key
-4. Pulsa "Guardar y conectar"
+### Opción 1 — Supabase CLI
+```bash
+supabase functions deploy ai --project-ref zwvcqhqyhtrsirolxdjm
+```
 
-✅ A partir de ahí todos los datos se sincronizan automáticamente.
-Los datos se guardan también en localStorage como caché local.
+### Opción 2 — Manual (subir index.html a cualquier hosting)
+El archivo `public/index.html` es autocontenido. Se puede subir a:
+- Netlify drop (drag & drop)
+- Vercel (requiere vercel.json)
+- GitHub Pages
+- Cualquier servidor estático
 
-## Coste
-- Supabase: gratis (500MB, más que suficiente)
-- Vercel: gratis
-- Anthropic: ~0.01-0.05€/día
+## Variables de entorno necesarias
+
+En Supabase Dashboard → Project Settings → Edge Functions → Secrets:
+- `ANTHROPIC_API_KEY` → tu API key de Anthropic
+
+## Login
+
+- Email: depalomero@gmail.com  
+- Contraseña: Nootrit2026! (cámbiala desde la app o desde Supabase Auth)
+
+## Base de datos (Supabase)
+
+Tablas principales:
+- `profiles` — perfil físico del usuario
+- `meal_history` — registro de comidas
+- `weight_history` — historial de peso
+- `food_kb` — base de datos personal de alimentos
