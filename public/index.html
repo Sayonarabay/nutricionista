@@ -993,11 +993,12 @@ async function doLogin(){
     if(res.error){
       const msg=res.error.message||'';
       showAuthErr(msg.includes('Invalid')||msg.includes('credentials')||msg.includes('invalid')?
-        'Email o contraseña incorrectos. La contraseña actual es: Nootrit2026!':msg||'Error desconocido');
+        'Email o contraseña incorrectos':msg||'Error desconocido');
     } else if(res.data?.user){
+      showAuthErr('');
       currentUser=res.data.user;
       document.getElementById('auth-screen').classList.add('gone');
-      await loadProfile();
+      try{ await loadProfile(); }catch(le){ console.error('loadProfile error:',le); await bootApp(); }
     } else {
       showAuthErr('Respuesta inesperada del servidor');
     }
@@ -1059,7 +1060,7 @@ window.addEventListener('DOMContentLoaded', async function(){
     if(user && (user.id || user.email)){
       currentUser=user;
       document.getElementById('auth-screen').classList.add('gone');
-      await loadProfile();
+      try{ await loadProfile(); }catch(e){ await bootApp(); }
     }
   } catch(e){
     console.error('Session restore failed:', e);
@@ -1068,9 +1069,15 @@ window.addEventListener('DOMContentLoaded', async function(){
 
 // ── PROFILE / ONBOARDING ───────────────────────────────────────────────────
 async function loadProfile(){
-  const{data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
-  if(!data||!data.age){document.getElementById('ob-screen').classList.add('on');return;}
-  profile=data;await bootApp();
+  try{
+    const{data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
+    if(!data||!data.age){document.getElementById('ob-screen').classList.add('on');return;}
+    profile=data;await bootApp();
+  }catch(e){
+    console.error('loadProfile error:',e);
+    // If profile fetch fails, still boot the app
+    await bootApp();
+  }
 }
 let obCur=0;
 function obTo(step){
