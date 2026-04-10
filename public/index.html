@@ -35,6 +35,10 @@ body{font-family:var(--fb);color:var(--ink);min-height:100vh;background:var(--bg
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 @keyframes swipeOut{to{transform:translateX(-110%);opacity:0}}
 @keyframes mealIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+@keyframes avJump{0%{transform:translateY(0)}30%{transform:translateY(-8px)}60%{transform:translateY(-4px)}80%{transform:translateY(-6px)}100%{transform:translateY(0)}}
+@keyframes avSpin{0%{transform:rotate(0deg) scale(1)}50%{transform:rotate(180deg) scale(1.1)}100%{transform:rotate(360deg) scale(1)}}
+@keyframes avShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+@keyframes avBounce{0%,100%{transform:translateY(0) scale(1)}40%{transform:translateY(-10px) scale(1.05)}70%{transform:translateY(-5px) scale(1.02)}}
 .meal-item.new{animation:mealIn .25s ease both}
 @keyframes bounceIn{0%{transform:scale(.7);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
 
@@ -169,12 +173,12 @@ body{font-family:var(--fb);color:var(--ink);min-height:100vh;background:var(--bg
 .motiv{background:var(--white);border-radius:var(--rl);border:1.5px solid var(--bg3);padding:11px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .2s;opacity:.85}
 
 /* ── AVATAR ── */
-.avatar-wrap{display:flex;align-items:center;gap:14px;margin-bottom:14px;padding:14px 16px;background:rgba(255,255,255,.07);border-radius:var(--rl);position:relative;z-index:1}
+.avatar-wrap{display:flex;align-items:center;gap:10px;margin-bottom:10px;padding:8px 10px;background:rgba(255,255,255,.07);border-radius:var(--r);position:relative;z-index:1}
 .avatar-svg{flex-shrink:0;image-rendering:pixelated}
-.avatar-info{flex:1}
-.avatar-name{font-family:var(--fd);font-size:16px;font-weight:900;color:#fff;letter-spacing:-.03em}
-.avatar-progress{font-size:11px;color:rgba(255,255,255,.7);font-weight:700;margin-top:3px}
-.avatar-target{font-size:12px;font-weight:900;color:#A7F3D0;margin-top:4px}
+.avatar-info{flex:1;min-width:0}
+.avatar-name{font-family:var(--fd);font-size:15px;font-weight:900;color:#fff;letter-spacing:-.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.avatar-progress{font-size:10px;color:rgba(255,255,255,.7);font-weight:700;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.avatar-target{font-size:10px;font-weight:900;color:#A7F3D0;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ── DAY CLOSE BUTTON ── */
 .day-close-btn{width:100%;padding:13px;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.25);border-radius:var(--rl);color:#fff;font-family:var(--fb);font-size:13px;font-weight:800;cursor:pointer;transition:all .2s;margin-bottom:10px;display:none}
@@ -551,16 +555,7 @@ canvas{width:100%!important}
         <div><div class="h-date" id="h-date" style="font-size:11px;color:rgba(255,255,255,.6);font-weight:700"></div></div>
       </div>
       <div class="h-mid">
-        <div class="ring-wr">
-          <svg width="80" height="80" viewBox="0 0 80 80">
-            <circle cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="8"/>
-            <circle id="ring-arc" cx="40" cy="40" r="32" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="8"
-              stroke-dasharray="201" stroke-dashoffset="201" stroke-linecap="round"
-              style="transition:stroke-dashoffset .7s cubic-bezier(.34,1.56,.64,1)"/>
-          </svg>
-          <div class="ring-c"><div class="ring-pct" id="ring-pct">0%</div><div class="ring-lbl" data-i18n="goal_short">META</div></div>
-        </div>
-        <div class="h-stats">
+        <div class="h-stats" style="flex:1">
           <div class="hs"><span class="hs-l">Consumido</span><span class="hs-v" id="sc-con">0 kcal</span></div>
           <div class="hs"><span class="hs-l">Quemado</span><span class="hs-v ok" id="sc-bur">0 kcal</span></div>
           <div class="hs"><span class="hs-l">Neto</span><span class="hs-v" id="sc-net">0 kcal</span></div>
@@ -577,6 +572,7 @@ canvas{width:100%!important}
         <div class="prot-val" id="prot-val">0 / — g</div>
       </div>
     </div>
+    <span id="ring-pct" style="display:none"></span><span id="ring-arc" style="display:none"></span>
 
     <div id="alerts-zone"></div>
 
@@ -1419,6 +1415,11 @@ async function finishAdd(){
   document.getElementById('go-btn').disabled=false;
   document.getElementById('thinking').style.display='none';
   render();
+  // Avatar reaction
+  const t2=totals();
+  if(curType==='Actividad') triggerAvatarAnim('activity');
+  else if(t2.net > (profile.goal_kcal||2000)) triggerAvatarAnim('over');
+  else triggerAvatarAnim('eat');
   loadCalHistory().then(()=>render());
   updateStreak();
 }
@@ -1903,7 +1904,7 @@ function showToast(msg,type='',ms=2500){
 // ══════════════════════════════════════════════════════════════
 // PIXEL ART AVATAR
 // ══════════════════════════════════════════════════════════════
-const AV_SCALE = 4;
+const AV_SCALE = 3;
 const AV_W = 16, AV_H = 20;
 const AV_SKIN = '#F5C28A';
 const AV_HAIR_M = '#3D2B1F';
@@ -1977,6 +1978,21 @@ function drawPixelAvatarOn(canvas, stage, gender, mood, scale){
 
 let _avFrame = 0, _avBlink = false, _avAnimId = null;
 
+function triggerAvatarAnim(type){
+  const canvas = document.getElementById('avatar-canvas');
+  if(!canvas) return;
+  const anims = {
+    eat: 'avBounce .6s ease',
+    activity: 'avJump .5s ease',
+    over: 'avShake .4s ease',
+    goal: 'avSpin .6s ease'
+  };
+  canvas.style.animation = 'none';
+  canvas.offsetHeight; // reflow
+  canvas.style.animation = anims[type] || 'avBounce .5s ease';
+  setTimeout(() => { canvas.style.animation = ''; }, 700);
+}
+
 function drawAvatar(){
   const svg = document.getElementById('avatar-svg');
   if(!svg) return;
@@ -1996,8 +2012,8 @@ function drawAvatar(){
   if(!canvas){
     canvas = document.createElement('canvas');
     canvas.id = 'avatar-canvas';
-    canvas.width = 64;
-    canvas.height = 80;
+    canvas.width = 48;
+    canvas.height = 60;
     canvas.style.cssText = 'image-rendering:pixelated;image-rendering:crisp-edges;flex-shrink:0';
     svg.replaceWith(canvas);
   }
@@ -2248,6 +2264,7 @@ function closeDayFlow(){
   let grade, phrase;
   if(pct <= 1.0 && pct >= 0.8){
     grade = '🎯';
+    triggerAvatarAnim('goal');
     const realStreak = calcRealStreak() + 1;
     phrase = `Día perfecto. ${realStreak} días consecutivos dentro del objetivo. Cada día así te acerca ${Math.round(500/7700*10)/10} kg más a tu meta.`;
     launchConfetti();
