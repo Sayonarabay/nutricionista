@@ -1606,7 +1606,7 @@ function render(){
     window._meals=[...todayMeals];
   }
   renderAlerts();renderSuggestions();
-  document.getElementById('nav-streak').textContent=profile.streak||0;
+  const _ns=document.getElementById('nav-streak');if(_ns)_ns.textContent=profile.streak||0;
   renderWeight();renderProgress();renderKBList();
   // settings
   document.getElementById('cfg-email').textContent=currentUser.email;
