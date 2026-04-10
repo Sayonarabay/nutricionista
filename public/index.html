@@ -796,6 +796,13 @@ canvas{width:100%!important}
   <div id="err-msg" style="font-size:13px;opacity:.8;line-height:1.6"></div>
   <button onclick="location.reload()" style="margin-top:20px;padding:12px 24px;background:#fff;color:#FF6B2B;border:none;border-radius:12px;font-size:14px;font-weight:900;cursor:pointer">Reintentar</button>
 </div>
+
+<!-- PIXEL ART PRELOADER -->
+<div id="preloader" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg,#FF6B2B 0%,#FF9F5B 50%,#FFD60A 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .4s">
+  <canvas id="preloader-canvas" width="64" height="80" style="image-rendering:pixelated;margin-bottom:16px"></canvas>
+  <div style="font-family:'Fraunces',serif;font-size:36px;font-weight:900;color:#fff;letter-spacing:-.04em;margin-bottom:4px">nootrit</div>
+  <div style="font-size:13px;color:rgba(255,255,255,.7);font-weight:700">come bien, sin complicarte</div>
+</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 
 <script>
@@ -1105,7 +1112,7 @@ async function doSignout(){
 
 // ── SESSION RESTORE ON LOAD ────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async function(){  // Always show auth screen first, then check session
-  document.getElementById('auth-screen').style.display='flex';
+  document.getElementById('auth-screen').style.display='flex';hidePreloader();
   try {
     const user = await sb.auth.refreshSession();
     if(user && (user.id || user.email)){
@@ -1162,7 +1169,7 @@ async function obFinish(){
 async function bootApp(){
   document.getElementById('app').classList.add('on');
   await Promise.all([loadTodayMeals(),loadWeightHistory(),loadCalHistory(),loadFoodKB()]);
-  initMotiv();render();
+  initMotiv();render();hidePreloader();
   showToast('👋 Hola, '+currentUser.email.split('@')[0],'orange');
   updSync('ok','✅ Datos cargados');
 }
@@ -1896,6 +1903,80 @@ function showToast(msg,type='',ms=2500){
 // ══════════════════════════════════════════════════════════════
 // PIXEL ART AVATAR
 // ══════════════════════════════════════════════════════════════
+const AV_SCALE = 4;
+const AV_W = 16, AV_H = 20;
+const AV_SKIN = '#F5C28A';
+const AV_HAIR_M = '#3D2B1F';
+const AV_HAIR_F = '#8B4513';
+const AV_SHOE = '#1F2937';
+
+function _avPx(ctx, x, y, c, w, h){
+  ctx.fillStyle = c;
+  ctx.fillRect(x*AV_SCALE, y*AV_SCALE, (w||1)*AV_SCALE, (h||1)*AV_SCALE);
+}
+
+function drawPixelAvatarOn(canvas, stage, gender, mood, scale){
+  const s = scale || AV_SCALE;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const px = (x,y,c,w,h) => { ctx.fillStyle=c; ctx.fillRect(x*s,y*s,(w||1)*s,(h||1)*s); };
+
+  const skin = AV_SKIN;
+  const hair = gender === 'F' ? AV_HAIR_F : AV_HAIR_M;
+  const shoe = AV_SHOE;
+  const shirts = ['#3B82F6','#2563EB','#1D4ED8','#1E40AF','#1E3A8A'];
+  const pants  = ['#374151','#1F2937','#1F2937','#111827','#111827'];
+  const shirt = shirts[Math.min(stage,4)];
+  const pant  = pants[Math.min(stage,4)];
+  const bodyW = [8,7,6,5,4][Math.min(stage,4)];
+  const bx    = Math.floor((AV_W - bodyW) / 2);
+  const armW  = [2,2,1,1,1][Math.min(stage,4)];
+  const legW  = [3,3,2,2,2][Math.min(stage,4)];
+
+  // Hair
+  if(gender === 'F'){
+    px(3,0,hair,10,2);
+    px(3,7,hair,1,4);
+    px(12,7,hair,1,4);
+  } else {
+    px(4,0,hair,8,2);
+  }
+
+  // Head
+  px(4,2,skin,8,1);
+  px(3,3,skin,10,3);
+  px(4,6,skin,8,1);
+
+  // Eyes
+  px(5,4,'#2D1B0E');
+  px(9,4,'#2D1B0E');
+
+  // Mouth
+  if(mood==='smile'){ px(6,6,'#B05030'); px(7,6,'#B05030'); px(8,6,'#B05030'); }
+  else if(mood==='flat'){ px(6,6,'#B05030',3); }
+  else { px(7,6,'#B05030'); }
+
+  // Neck
+  px(7,7,skin,2);
+
+  // Body
+  for(let r=8;r<=13;r++) px(bx,r,shirt,bodyW);
+
+  // Arms
+  for(let r=8;r<=12;r++){ px(bx-armW,r,shirt,armW); px(bx+bodyW,r,shirt,armW); }
+  px(bx-armW,13,skin,armW);
+  px(bx+bodyW,13,skin,armW);
+
+  // Legs
+  const lx1=bx, lx2=bx+bodyW-legW;
+  for(let r=14;r<=17;r++){ px(lx1,r,pant,legW); px(lx2,r,pant,legW); }
+  px(lx1-1,18,shoe,legW+1); px(lx2-1,18,shoe,legW+1);
+  px(lx1-1,19,shoe,legW+1); px(lx2-1,19,shoe,legW+1);
+}
+
+let _avFrame = 0, _avBlink = false, _avAnimId = null;
+
 function drawAvatar(){
   const svg = document.getElementById('avatar-svg');
   if(!svg) return;
@@ -1903,134 +1984,106 @@ function drawAvatar(){
   const g = profile.gender || 'M';
   const w = parseFloat(profile.weight_kg) || 80;
   const t = parseFloat(profile.target_kg) || 70;
-  const h = parseInt(profile.height_cm) || 175;
-  const age = parseInt(profile.age) || 35;
 
-  // Progress 0→1 (0=start, 1=at target)
-  const startW = Math.max(w, t + 1);
+  const startW = Math.max(w, t+1);
   const prog = Math.max(0, Math.min(1, (startW - w) / Math.max(1, startW - t)));
+  const stage = prog>=0.9?4:prog>=0.65?3:prog>=0.35?2:prog>=0.1?1:0;
 
-  // BMI for body shape
-  const bmi = w / ((h/100) ** 2);
-
-  // 5 stages of pixel art
-  const stage = prog >= 0.9 ? 4 : prog >= 0.65 ? 3 : prog >= 0.35 ? 2 : prog >= 0.1 ? 1 : 0;
-
-  // Color palette
-  const skinTones = ['#FDDBB4','#F5C28A','#E8A96A','#C8824A','#A05C2A'];
-  const skinIdx = age < 25 ? 0 : age < 40 ? 1 : age < 55 ? 2 : 3;
-  const skin = skinTones[skinIdx];
-  const hair = age > 60 ? '#CCCCCC' : g === 'M' ? '#3D2B1F' : '#6B3A2A';
-  const shirt = g === 'M' ? ['#3B82F6','#2563EB','#1D4ED8','#1E40AF','#1E3A8A'][stage] : ['#EC4899','#DB2777','#BE185D','#9D174D','#831843'][stage];
-  const pants = g === 'M' ? '#1F2937' : '#374151';
-
-  // Body widths by stage (pixels wide at widest)
-  const bodyW = [7, 6, 5, 5, 4][stage];
-  const bodyX = Math.floor((14 - bodyW) / 2);
-
-  // Pixel grid: 14 wide, 18 tall
-  // Each pixel = rect 4x4
-  const px = (x, y, color, w2=1, h2=1) =>
-    `<rect x="${x*4}" y="${y*2}" width="${w2*4}" height="${h2*2}" fill="${color}"/>`;
-
-  let d = '';
-
-  // Hair
-  if(g === 'M'){
-    d += px(4,0,hair,6,1);
-    d += px(4,1,hair,6,1);
-  } else {
-    // longer hair
-    d += px(3,0,hair,8,1);
-    d += px(3,1,hair,8,1);
-    d += px(3,7,hair,1,3);
-    d += px(10,7,hair,1,3);
+  // Replace SVG with canvas-based approach
+  // Get parent and inject canvas if not already there
+  const parent = svg.parentElement;
+  let canvas = parent.querySelector('#avatar-canvas');
+  if(!canvas){
+    canvas = document.createElement('canvas');
+    canvas.id = 'avatar-canvas';
+    canvas.width = 64;
+    canvas.height = 80;
+    canvas.style.cssText = 'image-rendering:pixelated;image-rendering:crisp-edges;flex-shrink:0';
+    svg.replaceWith(canvas);
   }
 
-  // Head
-  d += px(4,2,skin,6,1);
-  d += px(3,3,skin,8,1);
-  d += px(3,4,skin,8,1);
-  d += px(3,5,skin,8,1);
-  d += px(4,6,skin,6,1);
-
-  // Eyes
-  const eyeColor = '#1A1207';
-  d += px(4,3,eyeColor);
-  d += px(7,3,eyeColor);
-
-  // Mouth — smile if on track, neutral if over
   const t2 = totals();
   const onTrack = t2.net <= (profile.goal_kcal||2000);
-  if(onTrack){
-    d += px(5,5,'#C05020');
-    d += px(6,5,'#C05020');
-  } else {
-    d += px(5,5,'#C05020',2,1); // flat mouth
+  const mood = onTrack ? 'smile' : t2.net > (profile.goal_kcal||2000)*1.1 ? 'sad' : 'flat';
+
+  drawPixelAvatarOn(canvas, stage, g, mood, AV_SCALE);
+
+  // Start/update animation
+  if(_avAnimId) cancelAnimationFrame(_avAnimId);
+  function avAnimate(){
+    _avFrame++;
+    if(_avFrame%120===0) _avBlink=true;
+    if(_avFrame%120===8)  _avBlink=false;
+    const bob = Math.sin(_avFrame*0.05)*1.5;
+    canvas.style.transform = `translateY(${bob.toFixed(1)}px)`;
+    if(_avBlink){
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = AV_SKIN;
+      ctx.fillRect(5*AV_SCALE, 4*AV_SCALE, AV_SCALE, AV_SCALE);
+      ctx.fillRect(9*AV_SCALE, 4*AV_SCALE, AV_SCALE, AV_SCALE);
+      ctx.fillStyle = '#2D1B0E';
+      ctx.fillRect(5*AV_SCALE, 4*AV_SCALE+3, AV_SCALE, 1);
+      ctx.fillRect(9*AV_SCALE, 4*AV_SCALE+3, AV_SCALE, 1);
+    }
+    _avAnimId = requestAnimationFrame(avAnimate);
   }
+  avAnimate();
 
-  // Neck
-  d += px(6,7,skin,2,1);
-
-  // Body/torso — width depends on stage
-  for(let row=8; row<=12; row++){
-    d += px(bodyX, row, shirt, bodyW, 1);
-  }
-
-  // Arms — thicker at higher weight
-  const armW = stage < 2 ? 2 : 1;
-  for(let row=8; row<=11; row++){
-    d += px(bodyX-armW, row, shirt, armW, 1); // left arm
-    d += px(bodyX+bodyW, row, shirt, armW, 1); // right arm
-  }
-
-  // Hands
-  d += px(bodyX-armW, 12, skin, armW, 1);
-  d += px(bodyX+bodyW, 12, skin, armW, 1);
-
-  // Legs
-  const legW = stage < 2 ? 3 : 2;
-  const legX1 = bodyX;
-  const legX2 = bodyX + bodyW - legW;
-  for(let row=13; row<=16; row++){
-    d += px(legX1, row, pants, legW, 1);
-    d += px(legX2, row, pants, legW, 1);
-  }
-
-  // Shoes
-  d += px(legX1-1, 17, '#1F2937', legW+1, 1);
-  d += px(legX2-1, 17, '#1F2937', legW+1, 1);
-
-  svg.innerHTML = d;
-
-  // Update text info
-  const kgLeft = (w - t).toFixed(1);
-  const progPct = Math.round(prog * 100);
+  // Update text
+  const kgLeft = Math.max(0, w - t).toFixed(1);
+  const progPct = Math.round(prog*100);
   const progEl = document.getElementById('avatar-progress');
   const targEl = document.getElementById('avatar-target');
-  if(progEl){
-    progEl.textContent = kgLeft > 0
-      ? `Te faltan ${kgLeft} kg para tu objetivo`
-      : '¡Objetivo alcanzado! 🎉';
-  }
+  if(progEl) progEl.textContent = kgLeft>0 ? `Te faltan ${kgLeft} kg para tu objetivo` : '¡Objetivo alcanzado!';
 
-  // Projection based on last 7 days avg deficit
-  if(targEl && calHistory.length >= 3){
-    const goal = profile.goal_kcal || 2000;
-    const recent = calHistory.slice(-7);
-    const avgNet = recent.reduce((s,d2)=>s+d2.net,0)/recent.length;
-    const avgDeficit = goal - avgNet; // positive = losing
-    if(avgDeficit > 50 && kgLeft > 0){
-      const daysLeft = Math.round((kgLeft * 7700) / avgDeficit);
-      const eta = new Date(Date.now() + daysLeft * 86400000);
-      const etaStr = eta.toLocaleDateString('es-ES',{day:'numeric',month:'short'});
-      targEl.textContent = `A este ritmo: ${t} kg el ${etaStr}`;
-    } else if(kgLeft <= 0){
-      targEl.textContent = `Meta: ${t} kg ✓`;
+  if(targEl){
+    if(calHistory.length>=3){
+      const goal = profile.goal_kcal||2000;
+      const recent = calHistory.slice(-7);
+      const avgNet = recent.reduce((s,d)=>s+d.net,0)/recent.length;
+      const avgDeficit = goal - avgNet;
+      if(avgDeficit>50 && kgLeft>0){
+        const daysLeft = Math.round((parseFloat(kgLeft)*7700)/avgDeficit);
+        const eta = new Date(Date.now()+daysLeft*86400000);
+        const etaStr = eta.toLocaleDateString('es-ES',{day:'numeric',month:'short'});
+        targEl.textContent = `A este ritmo: ${t} kg el ${etaStr}`;
+      } else if(kgLeft<=0){
+        targEl.textContent = `Meta ${t} kg conseguida`;
+      } else {
+        targEl.textContent = `Meta: ${t} kg`;
+      }
     } else {
       targEl.textContent = `Meta: ${t} kg`;
     }
   }
+}
+
+// Preloader animation
+(function(){
+  const pc = document.getElementById('preloader-canvas');
+  if(!pc) return;
+  let f=0;
+  function preAnim(){
+    drawPixelAvatarOn(pc, 0, 'M', 'smile', AV_SCALE);
+    // bob
+    const bob = Math.sin(f*0.08)*2;
+    pc.style.transform = `translateY(${bob.toFixed(1)}px)`;
+    // blink
+    if(f%80===0){
+      const ctx=pc.getContext('2d');
+      ctx.fillStyle=AV_SKIN;
+      ctx.fillRect(5*AV_SCALE,4*AV_SCALE,AV_SCALE,AV_SCALE);
+      ctx.fillRect(9*AV_SCALE,4*AV_SCALE,AV_SCALE,AV_SCALE);
+    }
+    f++;
+    requestAnimationFrame(preAnim);
+  }
+  preAnim();
+})();
+
+function hidePreloader(){
+  const p = document.getElementById('preloader');
+  if(p){ p.style.opacity='0'; setTimeout(()=>p.style.display='none',400); }
 }
 
 // ══════════════════════════════════════════════════════════════
