@@ -34,6 +34,8 @@ body{font-family:var(--fb);color:var(--ink);min-height:100vh;background:var(--bg
 @keyframes confettiDrop{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
 @keyframes swipeOut{to{transform:translateX(-110%);opacity:0}}
+@keyframes mealIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+.meal-item.new{animation:mealIn .25s ease both}
 @keyframes bounceIn{0%{transform:scale(.7);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
 
 .anim-up{animation:fadeUp .3s ease both}
@@ -100,18 +102,18 @@ body{font-family:var(--fb);color:var(--ink);min-height:100vh;background:var(--bg
 .topbar{position:sticky;top:0;z-index:200;height:52px;background:rgba(255,248,240,.95);backdrop-filter:blur(16px);border-bottom:1px solid var(--bg3);display:flex;align-items:center;justify-content:space-between;padding:0 14px}
 .tb-logo{font-family:var(--fd);font-size:22px;font-weight:900;color:var(--orange);letter-spacing:-.04em}
 .tb-r{display:flex;gap:6px;align-items:center}
-.streak-pill{display:flex;align-items:center;gap:4px;padding:5px 11px;background:var(--orange-l);border-radius:99px;font-size:12px;font-weight:900;color:var(--orange)}
+.streak-pill{display:none}
 .sync-btn{padding:5px 10px;background:var(--bg2);border:none;border-radius:99px;font-size:11px;font-weight:800;color:var(--ink3);cursor:pointer;transition:all .15s;font-family:var(--fb)}
 .sync-btn:hover{background:var(--bg3)}
 .sync-btn.busy{opacity:.4;pointer-events:none}
 
 /* ── BOTTOM NAV ── */
-.bnav{position:fixed;bottom:0;left:0;right:0;z-index:200;background:rgba(255,252,248,.97);backdrop-filter:blur(16px);border-top:1px solid var(--bg3);display:flex;padding:6px 0 max(8px,env(safe-area-inset-bottom))}
-.bni{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:5px 0;color:var(--ink3);transition:all .15s}
+.bnav{position:fixed;bottom:0;left:0;right:0;z-index:200;background:rgba(255,252,248,.97);backdrop-filter:blur(16px);border-top:1px solid var(--bg3);display:flex;padding:8px 0 max(10px,env(safe-area-inset-bottom))}
+.bni{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:8px 0;color:var(--ink3);transition:all .15s}
 .bni.on{color:var(--orange)}
 .bni svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:all .15s}
 .bni.on svg{stroke-width:2.5;transform:scale(1.1)}
-.bni em{font-size:9px;font-weight:800;font-style:normal}
+.bni em{font-size:10px;font-weight:800;font-style:normal;letter-spacing:.02em}
 
 /* ── PAGES ── */
 #app{display:none;padding-bottom:84px}
@@ -162,10 +164,10 @@ body{font-family:var(--fb);color:var(--ink);min-height:100vh;background:var(--bg
 .alert.done{background:var(--green-l);border:1.5px solid #6EE7B7;color:var(--green-d)}
 
 /* ── MOTIV ── */
-.motiv{background:var(--white);border-radius:var(--rl);border:2px solid var(--bg3);padding:14px 16px;margin-bottom:10px;box-shadow:var(--sh);display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s}
+.motiv{background:var(--white);border-radius:var(--rl);border:1.5px solid var(--bg3);padding:11px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;cursor:pointer;transition:all .2s;opacity:.85}
 .motiv:hover{border-color:var(--orange);transform:translateY(-1px)}
 .motiv-emoji{font-size:24px;flex-shrink:0;animation:pop .3s ease}
-.motiv-text{font-size:13px;color:var(--ink2);font-weight:700;line-height:1.6;flex:1}
+.motiv-text{font-size:12px;color:var(--ink3);font-weight:700;line-height:1.5;flex:1;font-style:italic}
 .motiv-tap{font-size:9px;font-weight:800;color:var(--ink3);white-space:nowrap}
 
 /* ── CARDS ── */
@@ -180,16 +182,16 @@ body{font-family:var(--fb);color:var(--ink);min-height:100vh;background:var(--bg
 .meal-item.swipe-out{animation:swipeOut .25s ease forwards}
 .mi-em{font-size:16px;flex-shrink:0}
 .mi-tp{font-size:7px;font-weight:900;letter-spacing:.07em;color:var(--ink3);width:48px;flex-shrink:0;text-transform:uppercase}
-.mi-ds{flex:1;font-size:12px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
-.mi-kc{font-size:12px;font-weight:900;color:var(--ink2);margin-right:4px;transition:all .3s}
+.mi-ds{flex:1;font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700}
+.mi-kc{font-size:13px;font-weight:900;color:var(--ink2);margin-right:4px;transition:all .3s}
 .mi-kc.updated{animation:pop .3s ease;color:var(--orange)}
 .meal-item.act .mi-kc{color:var(--green-d)}
 .mi-edit{background:none;border:none;cursor:pointer;font-size:14px;padding:3px 5px;border-radius:6px;transition:all .15s;opacity:.5}
 .mi-edit:hover{background:var(--orange-l);opacity:1}
 
 /* ── INPUT ── */
-.input-wrap{background:var(--white);border-radius:var(--rxl);border:2px solid var(--bg3);padding:14px;margin-bottom:10px;box-shadow:var(--sh-lg);transition:border-color .2s}
-.input-wrap:focus-within{border-color:var(--orange)}
+.input-wrap{background:var(--white);border-radius:var(--rxl);border:2px solid var(--bg3);padding:16px;margin-bottom:10px;box-shadow:0 8px 32px rgba(255,107,43,.12);transition:border-color .2s}
+.input-wrap:focus-within{border-color:var(--orange);box-shadow:0 8px 32px rgba(255,107,43,.22)}
 .type-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px}
 .ttype{padding:5px 11px;font-size:10px;font-weight:900;border:2px solid var(--bg3);border-radius:99px;background:transparent;color:var(--ink3);cursor:pointer;transition:all .15s;font-family:var(--fb)}
 .ttype:hover{border-color:var(--orange);color:var(--orange)}
@@ -209,7 +211,7 @@ body{font-family:var(--fb);color:var(--ink);min-height:100vh;background:var(--bg
 .qty-unit{font-size:12px;color:var(--ink3);font-weight:700}
 /* input row */
 .inp-row{display:flex;gap:7px;position:relative}
-.food-inp{flex:1;font-size:14px;font-weight:700;padding:11px 14px;background:var(--bg);border:2px solid transparent;border-radius:var(--rl);color:var(--ink);font-family:var(--fb);transition:all .15s}
+.food-inp{flex:1;font-size:15px;font-weight:700;padding:13px 14px;background:var(--bg);border:2px solid transparent;border-radius:var(--rl);color:var(--ink);font-family:var(--fb);transition:all .15s}
 .food-inp:focus{outline:none;background:var(--white);border-color:var(--orange)}
 .food-inp::placeholder{color:var(--ink3);font-weight:600}
 .go-btn{padding:11px 18px;background:var(--orange);color:#fff;border:none;border-radius:var(--rl);font-size:18px;font-weight:900;cursor:pointer;transition:all .15s;box-shadow:0 4px 12px rgba(255,107,43,.3)}
@@ -473,8 +475,7 @@ canvas{width:100%!important}
   <div class="topbar">
     <div class="tb-logo">nootrit</div>
     <div class="tb-r">
-      <div class="streak-pill">🔥 <span id="nav-streak">0</span></div>
-      <button class="sync-btn" id="sync-btn" onclick="syncNow()">↑↓ sync</button>
+      <button class="sync-btn" id="sync-btn" onclick="syncNow()">↑↓</button>
     </div>
   </div>
 
@@ -490,7 +491,7 @@ canvas{width:100%!important}
     <div class="hero anim-up-1">
       <div class="h-top">
         <div><div class="h-name" id="h-name">Hola 👋</div><div class="h-date" id="h-date"></div></div>
-        <div class="h-weight-badge" onclick="showPage('weight',document.querySelectorAll('.bni')[2])">
+        <div class="h-weight-badge" onclick="showPage('progress',document.querySelectorAll('.bni')[1])">
           <div class="h-weight-n" id="h-w-cur">—</div>
           <div class="h-weight-l">KG HOY</div>
         </div>
@@ -530,7 +531,7 @@ canvas{width:100%!important}
       <div id="meals-list"><div class="meal-empty">Nada todavía — ¡registra tu primera comida!</div></div>
     </div>
 
-    <div class="fb-box" id="fb-box">
+    <div class="fb-box" id="fb-box" style="display:none">
       <div class="fb-row"><span class="fb-chip" id="fb-meal"></span><span class="fb-chip" id="fb-kcal"></span><span class="fb-chip" id="fb-total"></span><span class="fb-chip" id="fb-rem"></span></div>
       <div class="fb-tip" id="fb-tip"></div>
     </div>
@@ -575,10 +576,6 @@ canvas{width:100%!important}
       </div>
     </div>
 
-    <div class="day-actions anim-up-4">
-      <button class="btn primary" onclick="showSummary()">📊 Resumen del día</button>
-      <button class="btn" onclick="newDay()">Nuevo día</button>
-    </div>
     <div class="summary" id="summary"></div>
   </div>
 
@@ -603,12 +600,8 @@ canvas{width:100%!important}
       <div class="chart-title">Tendencia 30 días</div>
       <div class="chart-box"><canvas id="ch-month"></canvas></div>
     </div>
-  </div>
-
-  <!-- PESO -->
-  <div class="page" id="pg-weight">
-    <div style="height:8px"></div>
-    <div class="weight-hero anim-up">
+    <!-- PESO integrado en historial -->
+    <div class="weight-hero anim-up" style="margin-top:10px">
       <div class="wh-row">
         <div class="wh-left">
           <div style="display:flex;align-items:flex-end;gap:5px">
@@ -635,6 +628,8 @@ canvas{width:100%!important}
       <div id="w-history"></div>
     </div>
   </div>
+  <!-- pg-weight kept hidden for compatibility -->
+  <div class="page" id="pg-weight" style="display:none!important"></div>
 
   <!-- CONFIG -->
   <div class="page" id="pg-settings">
@@ -677,8 +672,7 @@ canvas{width:100%!important}
 
   <nav class="bnav">
     <div class="bni on" onclick="showPage('today',this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><em>Hoy</em></div>
-    <div class="bni" onclick="showPage('progress',this)"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><em>Progreso</em></div>
-    <div class="bni" onclick="showPage('weight',this)"><svg viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg><em>Peso</em></div>
+    <div class="bni" onclick="showPage('progress',this)"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><em>Historial</em></div>
     <div class="bni" onclick="showPage('settings',this)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><em>Config</em></div>
   </nav>
 </div>
@@ -1156,14 +1150,14 @@ function updSync(t,m){const el=document.getElementById('sync-status');if(el){el.
 async function saveProfile(){profile.updated_at=new Date().toISOString();await sb.from('profiles').upsert({...profile,id:currentUser.id});}
 
 // ── FOOD KB ────────────────────────────────────────────────────────────────
-async function kbUpsert(name,kcal,unit='porción'){
+async function kbUpsert(name,kcal,unit='porción',protein_g=0,carbs_g=0,fat_g=0){
   const norm=name.toLowerCase().trim();
   const ex=foodKB.find(f=>f.name===norm);
   if(ex){
     ex.times_used++;ex.last_used=new Date().toISOString();
-    await sb.from('food_kb').update({times_used:ex.times_used,last_used:ex.last_used,kcal_per_unit:kcal}).eq('id',ex.id);
+    await sb.from('food_kb').update({times_used:ex.times_used,last_used:ex.last_used,kcal_per_unit:kcal,protein_g,carbs_g,fat_g}).eq('id',ex.id);
   } else {
-    const{data}=await sb.from('food_kb').insert({auth_user_id:currentUser.id,name:norm,kcal_per_unit:kcal,unit,times_used:1}).select().single();
+    const{data}=await sb.from('food_kb').insert({auth_user_id:currentUser.id,name:norm,kcal_per_unit:kcal,unit,protein_g,carbs_g,fat_g,times_used:1}).select().single();
     if(data)foodKB.unshift(data);
   }
   foodKB.sort((a,b)=>b.times_used-a.times_used);
@@ -1311,7 +1305,7 @@ async function analyze(){
     // Call AI — only when truly needed
     const prompt=isAct
       ?`Actividad física: "${desc}". Persona ${profile.weight_kg||80}kg. SOLO JSON sin texto extra: {"kcal":NUM,"name":"nombre_corto"}`
-      :`Alimento: "${desc}". SOLO JSON sin texto extra: {"kcal":NUM,"name":"nombre_normalizado_singular","unit_label":"1 taza|1 pieza|100g|1 ración|1 vaso","tip":"consejo muy breve"}
+      :`Alimento: "${desc}". SOLO JSON sin texto extra: {"kcal":NUM,"protein_g":NUM,"carbs_g":NUM,"fat_g":NUM,"name":"nombre_normalizado_singular","unit_label":"1 taza|1 pieza|100g|1 ración|1 vaso","tip":"consejo muy breve"}
 nombre_normalizado_singular = nombre genérico en singular sin cantidad (ej: "café con leche", "huevo duro", "plátano").`;
     try{
       const r=await fetch('https://zwvcqhqyhtrsirolxdjm.supabase.co/functions/v1/ai',{method:'POST',headers:{'Content-Type':'application/json'},
@@ -1319,8 +1313,11 @@ nombre_normalizado_singular = nombre genérico en singular sin cantidad (ej: "ca
       const d=await r.json();
       const j=JSON.parse((d.content?.[0]?.text||'{}').replace(/```(?:json)?|```/g,'').trim());
       const kcal=Math.round(j.kcal||0);
-      await saveMeal(desc,curType,kcal);
-      if(j.name&&!isAct)await kbUpsert(j.name,Math.round(kcal/(qty.qty||1)),j.unit_label||'ud');
+      const prot=Math.round(j.protein_g||0);
+      const carbs=Math.round(j.carbs_g||0);
+      const fat=Math.round(j.fat_g||0);
+      await saveMeal(desc,curType,kcal,prot,carbs,fat);
+      if(j.name&&!isAct)await kbUpsert(j.name,Math.round(kcal/(qty.qty||1)),j.unit_label||'ud',prot,carbs,fat);
       showFeedback(desc,kcal,isAct,j.tip||'');
     }catch(e){
       showToast('❌ Error al calcular');
@@ -1340,29 +1337,30 @@ function extractQty(desc){
 }
 
 async function finishAdd(){
-  await loadCalHistory();
-  updateStreak();
   render();
   document.getElementById('go-btn').disabled=false;
   document.getElementById('thinking').style.display='none';
+  // async in background
+  loadCalHistory().then(()=>render());
+  updateStreak();
 }
 
-async function saveMeal(desc,type,kcal,macros){
+async function saveMeal(desc,type,kcal,protein_g=0,carbs_g=0,fat_g=0){
   const{data}=await sb.from('meal_history').insert({
     auth_user_id:currentUser.id,meal_date:today(),type,description:desc,kcal,
-    protein_g:0,carbs_g:0,fat_g:0,deleted:false,recorded_at:new Date().toISOString()
+    protein_g,carbs_g,fat_g,deleted:false,recorded_at:new Date().toISOString()
   }).select().single();
-  if(data)todayMeals.push(data);
+  if(data){todayMeals.push(data);todayMeals._lastId=data.id;}
 }
 
 function showFeedback(desc,kcal,isAct,tip){
+  // Simplified: just a toast, no intermediate box
   const t=totals();
-  document.getElementById('fb-meal').textContent=desc.length>28?desc.slice(0,26)+'…':desc;
-  document.getElementById('fb-kcal').textContent=kcal.toLocaleString('es-ES')+' kcal'+(isAct?' quemadas':'');
-  document.getElementById('fb-total').textContent='Total hoy: '+t.consumed.toLocaleString('es-ES')+' kcal';
-  document.getElementById('fb-rem').textContent='Restante: '+(t.remaining>=0?'+':'')+t.remaining.toLocaleString('es-ES');
-  document.getElementById('fb-tip').textContent=tip;
-  const fb=document.getElementById('fb-box');fb.style.display='block';
+  const rem=t.remaining;
+  const msg=isAct
+    ?`🏃 ${kcal} kcal quemadas`
+    :`+${kcal} kcal · quedan ${rem>0?rem:'0'} kcal`;
+  showToast(msg,'green',2200);
 }
 
 // ── EDIT / DELETE ──────────────────────────────────────────────────────────
@@ -1533,8 +1531,19 @@ function renderAlerts(){
   const t=totals(),hour=new Date().getHours(),alerts=[];
   const prot=todayMeals.filter(m=>m.type!=='Actividad').reduce((s,m)=>s+(m.protein_g||0),0);
   const protGoal=Math.round((profile.weight_kg||80)*1.6);
-  if(hour>=14&&prot<protGoal*.5)alerts.push({cls:'prot',txt:`💪 Solo ${prot}g proteínas (objetivo: ${protGoal}g). Añade huevos, pollo o legumbres.`});
-  if(t.net>=goal&&t.remaining<=0)alerts.push({cls:'done',txt:`✅ ¡Objetivo de ${goal} kcal alcanzado! Cuida las cenas.`});
+
+  // ── PASADO de calorías ──
+  if(t.net>goal)
+    alerts.push({cls:'carb',txt:`🚨 Te has pasado ${(t.net-goal).toLocaleString('es-ES')} kcal (llevas ${t.net.toLocaleString('es-ES')} de ${goal}).`});
+
+  // ── QUEDA margen ──
+  else if(t.remaining>0&&todayMeals.length>0)
+    alerts.push({cls:'done',txt:`✅ Te quedan ${t.remaining.toLocaleString('es-ES')} kcal para hoy.`});
+
+  // ── Proteínas bajas por la tarde ──
+  if(hour>=14&&prot<protGoal*0.5)
+    alerts.push({cls:'prot',txt:`💪 Solo ${prot}g de proteínas (objetivo: ${protGoal}g). Añade huevos, pollo o atún.`});
+
   zone.innerHTML=alerts.map(a=>`<div class="alert ${a.cls}"><span>→</span><span>${a.txt}</span></div>`).join('');
 }
 
@@ -1571,8 +1580,9 @@ function render(){
   const ml=document.getElementById('meals-list');
   if(!todayMeals.length){ml.innerHTML='<div class="meal-empty">Nada todavía — ¡registra tu primera comida!</div>';}
   else{
+    const _lastMealId=todayMeals._lastId;
     ml.innerHTML=todayMeals.map((m,i)=>`
-      <div class="meal-item${m.type==='Actividad'?' act':''}" style="animation-delay:${i*.04}s;position:relative">
+      <div class="meal-item${m.type==='Actividad'?' act':''}${m.id===_lastMealId?' new':''}" style="animation-delay:${i*.04}s;position:relative">
         <span class="mi-em">${ICONS[m.type]||'🍴'}</span>
         <span class="mi-tp">${m.type}</span>
         <span class="mi-ds">${m.description}</span>
@@ -1767,7 +1777,7 @@ function showPage(id,el){
   document.querySelectorAll('.bni').forEach(b=>b.classList.remove('on'));
   document.getElementById('pg-'+id).classList.add('on');
   if(el)el.classList.add('on');
-  if(id==='progress'){setTimeout(()=>{drawCharts();renderProgress();},50);}
+  if(id==='progress'){setTimeout(()=>{drawCharts();renderProgress();renderWeight();},50);}
 }
 function showToast(msg,type='',ms=2500){
   const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(type?' '+type:'');
