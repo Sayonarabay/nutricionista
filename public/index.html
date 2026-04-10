@@ -1861,245 +1861,30 @@ document.getElementById('dm-inp').addEventListener('keydown',e=>{if(e.key==='Ent
 // ── i18n SYSTEM ──────────────────────────────────────
 // ══════════════════════════════════════════════════════
 
-const LANGS = {
-  es: {
-    tagline:'come bien, sin complicarte',
-    login:'Entrar', signup:'Crear cuenta', forgot:'¿Olvidaste la contraseña?',
-    email_lbl:'Email', pass_lbl:'Contraseña', confirm_lbl:'Confirmar',
-    login_btn:'Entrar →', signup_btn:'Crear cuenta →',
-    connecting:'Conectando…', wrong_creds:'Email o contraseña incorrectos',
-    nav_today:'Hoy', nav_history:'Historial', nav_config:'Config',
-    kg_today:'KG HOY', goal_short:'META',
-    todays_log:'Registro de hoy',
-    no_meals:'Nada todavía — ¡registra tu primera comida!',
-    t_breakfast:'☀️ Desayuno', t_lunch:'🍽 Comida', t_snack_pm:'🍎 Merienda',
-    t_dinner:'🌙 Cena', t_snack:'🧁 Snack', t_activity:'🏃 Actividad',
-    food_placeholder:'Escribe un alimento…',
-    thinking:'Calculando con IA…',
-    s_account:'Cuenta', s_sync:'Sincronización', s_profile:'Perfil físico',
-    s_kb:'Mi base de datos de alimentos', s_session:'Sesión',
-    signout:'Cerrar sesión', sync_now:'↑↓ Sincronizar ahora', recalc:'⟳ Recalcular calorías',
-    streak:'RACHA', avg_kcal:'MEDIA KCAL', ok_days:'DÍAS OK',
-    consumed:'Consumido', burned:'Quemado', net:'Neto', remaining:'Restante',
-    goal_lbl:'meta',
-    alert_over:'🚨 Te has pasado {n} kcal ({consumed} de {goal}).',
-    alert_left:'✅ Te quedan {n} kcal para hoy.',
-    alert_prot:'💪 Solo {prot}g de proteínas (objetivo: {goal}g). Añade huevos, pollo o atún.',
-    synced:'✅ Sincronizado', sync_err:'❌ Error de sincronización',
-    saved_weight:'⚖️ {v} kg guardado',
-    hello:'Hola,',
-    days:['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
-    months:['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'],
-    motiv_tap:'tap →',
-    add_kcal:'+ {n} kcal añadidas',
-    kb_empty:'Aún no hay alimentos guardados.',
-    cfg_gender:'Género', cfg_age:'Edad', cfg_height:'Altura (cm)',
-    cfg_weight:'Peso (kg)', cfg_target:'Objetivo (kg)', cfg_activity:'Actividad',
-    cfg_calories:'Calorías diarias', cfg_prot_goal:'Proteína objetivo (g)',
-    act_sedentary:'Sedentario', act_light:'Ligero', act_moderate:'Moderado',
-    act_active:'Activo', act_very:'Muy activo',
-    gender_m:'Hombre', gender_f:'Mujer',
-    w_history:'Historial de peso', save_weight:'Guardar peso',
-    week_chart:'Últimos 7 días', month_trend:'Tendencia 30 días',
-    calendar:'Calendario del mes',
-    ob_title1:'Tu perfil físico', ob_sub1:'Para calcular tus calorías exactas',
-    ob_title2:'¿Cuánto te mueves?', ob_sub2:'Sé honesto, afecta mucho al cálculo',
-    ob_title3:'Tu plan', ob_sub3:'Basado en Harris-Benedict + déficit 500 kcal',
-    ob_next:'Siguiente →', ob_calc:'Calcular →', ob_back:'← Atrás', ob_start:'Empezar 🚀',
-    ob_kcal_sub:'kcal diarias recomendadas', ob_deficit:'Déficit 500 kcal/día', ob_rate:'~0.5 kg/semana',
-  },
-  fr: {
-    tagline:'mange bien, sans te compliquer',
-    login:'Se connecter', signup:'Créer un compte', forgot:'Mot de passe oublié ?',
-    email_lbl:'Email', pass_lbl:'Mot de passe', confirm_lbl:'Confirmer',
-    login_btn:'Se connecter →', signup_btn:'Créer un compte →',
-    connecting:'Connexion…', wrong_creds:'Email ou mot de passe incorrect',
-    nav_today:"Aujourd'hui", nav_history:'Historique', nav_config:'Config',
-    kg_today:"KG AUJOURD'HUI", goal_short:'OBJECTIF',
-    todays_log:"Enregistrements d'aujourd'hui",
-    no_meals:'Rien encore — enregistrez votre premier repas !',
-    t_breakfast:'☀️ Petit-déj', t_lunch:'🍽 Déjeuner', t_snack_pm:'🍎 Goûter',
-    t_dinner:'🌙 Dîner', t_snack:'🧁 Snack', t_activity:'🏃 Activité',
-    food_placeholder:'Décrivez un aliment…',
-    thinking:"Calcul en cours…",
-    s_account:'Compte', s_sync:'Synchronisation', s_profile:'Profil physique',
-    s_kb:'Ma base de données alimentaire', s_session:'Session',
-    signout:'Se déconnecter', sync_now:'↑↓ Synchroniser', recalc:'⟳ Recalculer les calories',
-    streak:'SÉRIE', avg_kcal:'MOY. KCAL', ok_days:'JOURS OK',
-    consumed:'Consommé', burned:'Brûlé', net:'Net', remaining:'Restant',
-    goal_lbl:'objectif',
-    alert_over:'🚨 Dépassé de {n} kcal ({consumed} sur {goal}).',
-    alert_left:'✅ Il te reste {n} kcal pour aujourd'hui.',
-    alert_prot:'💪 Seulement {prot}g de protéines (objectif : {goal}g). Ajoute des œufs, du poulet ou du thon.',
-    synced:'✅ Synchronisé', sync_err:'❌ Erreur de synchronisation',
-    saved_weight:'⚖️ {v} kg enregistré',
-    hello:'Bonjour,',
-    days:['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'],
-    months:['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'],
-    motiv_tap:'tap →',
-    add_kcal:'+ {n} kcal ajoutées',
-    kb_empty:'Pas encore d'aliments enregistrés.',
-    cfg_gender:'Sexe', cfg_age:'Âge', cfg_height:'Taille (cm)',
-    cfg_weight:'Poids (kg)', cfg_target:'Objectif (kg)', cfg_activity:'Activité',
-    cfg_calories:'Calories/jour', cfg_prot_goal:'Protéines objectif (g)',
-    act_sedentary:'Sédentaire', act_light:'Léger', act_moderate:'Modéré',
-    act_active:'Actif', act_very:'Très actif',
-    gender_m:'Homme', gender_f:'Femme',
-    w_history:'Historique du poids', save_weight:'Enregistrer le poids',
-    week_chart:'7 derniers jours', month_trend:'Tendance 30 jours',
-    calendar:'Calendrier du mois',
-    ob_title1:'Ton profil physique', ob_sub1:'Pour calculer tes calories exactes',
-    ob_title2:'Combien tu bouges ?', ob_sub2:'Sois honnête, ça change beaucoup le résultat',
-    ob_title3:'Ton plan', ob_sub3:'Basé sur Harris-Benedict + déficit 500 kcal',
-    ob_next:'Suivant →', ob_calc:'Calculer →', ob_back:'← Retour', ob_start:'Commencer 🚀',
-    ob_kcal_sub:'kcal journalières recommandées', ob_deficit:'Déficit 500 kcal/jour', ob_rate:'~0.5 kg/semaine',
-  },
-  en: {
-    tagline:'eat well, keep it simple',
-    login:'Sign in', signup:'Create account', forgot:'Forgot password?',
-    email_lbl:'Email', pass_lbl:'Password', confirm_lbl:'Confirm',
-    login_btn:'Sign in →', signup_btn:'Create account →',
-    connecting:'Connecting…', wrong_creds:'Incorrect email or password',
-    nav_today:'Today', nav_history:'History', nav_config:'Config',
-    kg_today:'KG TODAY', goal_short:'GOAL',
-    todays_log:"Today's log",
-    no_meals:'Nothing yet — log your first meal!',
-    t_breakfast:'☀️ Breakfast', t_lunch:'🍽 Lunch', t_snack_pm:'🍎 Snack',
-    t_dinner:'🌙 Dinner', t_snack:'🧁 Treat', t_activity:'🏃 Activity',
-    food_placeholder:'Describe a food or meal…',
-    thinking:'Calculating with AI…',
-    s_account:'Account', s_sync:'Sync', s_profile:'Physical profile',
-    s_kb:'My food database', s_session:'Session',
-    signout:'Sign out', sync_now:'↑↓ Sync now', recalc:'⟳ Recalculate calories',
-    streak:'STREAK', avg_kcal:'AVG KCAL', ok_days:'OK DAYS',
-    consumed:'Consumed', burned:'Burned', net:'Net', remaining:'Remaining',
-    goal_lbl:'goal',
-    alert_over:'🚨 Over by {n} kcal ({consumed} of {goal}).',
-    alert_left:'✅ {n} kcal left for today.',
-    alert_prot:'💪 Only {prot}g protein (goal: {goal}g). Add eggs, chicken or tuna.',
-    synced:'✅ Synced', sync_err:'❌ Sync error',
-    saved_weight:'⚖️ {v} kg saved',
-    hello:'Hello,',
-    days:['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],
-    months:['January','February','March','April','May','June','July','August','September','October','November','December'],
-    motiv_tap:'tap →',
-    add_kcal:'+ {n} kcal added',
-    kb_empty:'No foods saved yet.',
-    cfg_gender:'Gender', cfg_age:'Age', cfg_height:'Height (cm)',
-    cfg_weight:'Weight (kg)', cfg_target:'Target (kg)', cfg_activity:'Activity',
-    cfg_calories:'Daily calories', cfg_prot_goal:'Protein goal (g)',
-    act_sedentary:'Sedentary', act_light:'Light', act_moderate:'Moderate',
-    act_active:'Active', act_very:'Very active',
-    gender_m:'Male', gender_f:'Female',
-    w_history:'Weight history', save_weight:'Save weight',
-    week_chart:'Last 7 days', month_trend:'30-day trend',
-    calendar:'Monthly calendar',
-    ob_title1:'Your physical profile', ob_sub1:'To calculate your exact calories',
-    ob_title2:'How active are you?', ob_sub2:'Be honest, it matters a lot',
-    ob_title3:'Your plan', ob_sub3:'Based on Harris-Benedict + 500 kcal deficit',
-    ob_next:'Next →', ob_calc:'Calculate →', ob_back:'← Back', ob_start:'Get started 🚀',
-    ob_kcal_sub:'recommended daily kcal', ob_deficit:'500 kcal/day deficit', ob_rate:'~0.5 kg/week',
-  }
-};
-
-// ── Detect or restore language ──────────────────────────────────────────────
-let currentLang = localStorage.getItem('noot_lang') || (function(){
-  const bl = navigator.language || navigator.userLanguage || 'es';
-  if(bl.startsWith('fr')) return 'fr';
-  if(bl.startsWith('en')) return 'en';
-  return 'es';
-})();
-
+const LANGS = {es:{}};
+let currentLang = 'es';
 function t(key, vars){
-  const str = (LANGS[currentLang] || LANGS.es)[key] || (LANGS.es)[key] || key;
-  if(!vars) return str;
-  return str.replace(/\{(\w+)\}/g, (_,k) => vars[k] ?? '');
+  const strings = {
+    tagline:'come bien, sin complicarte', hello:'Hola,',
+    no_meals:'Nada todavia — registra tu primera comida!',
+    s_account:'Cuenta', s_sync:'Sincronizacion', s_profile:'Perfil fisico',
+    s_kb:'Mi base de datos de alimentos', s_session:'Sesion',
+    signout:'Cerrar sesion', sync_now:'Sincronizar', recalc:'Recalcular calorias',
+    streak:'RACHA', avg_kcal:'MEDIA KCAL', ok_days:'DIAS OK',
+    consumed:'Consumido', burned:'Quemado', net:'Neto', remaining:'Restante',
+    goal_lbl:'objetivo', synced:'Sincronizado', sync_err:'Error de sincronizacion',
+    saved_weight:'{v} kg guardado', motiv_tap:'tap', add_kcal:'+ {n} kcal anadidas',
+    thinking:'Calculando con IA...', analyzing:'Calculando...',
+    kg_today:'KG HOY', goal_short:'OBJETIVO',
+    alert_over:'Te has pasado {n} kcal (llevas {consumed} de {goal}).',
+    alert_left:'Te quedan {n} kcal para hoy.',
+    alert_prot:'Te faltan {prot}g de proteinas.'
+  };
+  let s = strings[key] || key;
+  if(vars) Object.keys(vars).forEach(k => { s = s.replace('{'+k+'}', vars[k]); });
+  return s;
 }
-
-function setLang(lang){
-  if(!LANGS[lang]) return;
-  currentLang = lang;
-  localStorage.setItem('noot_lang', lang);
-  applyLang();
-}
-
-function applyLang(){
-  // Update lang buttons
-  ['es','fr','en'].forEach(l => {
-    const btn = document.getElementById('lb-'+l);
-    if(btn) btn.classList.toggle('on', l === currentLang);
-  });
-  // Update all data-i18n elements
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.dataset.i18n;
-    const val = t(key);
-    if(el.tagName === 'INPUT') el.value = val;
-    else el.textContent = val;
-  });
-  // Update placeholders
-  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
-    el.placeholder = t(el.dataset.i18nPh);
-  });
-  // Update html lang attribute
-  document.documentElement.lang = currentLang;
-  // Update auth field labels
-  const authLbls = document.querySelectorAll('.auth-lbl');
-  if(authLbls[0]) authLbls[0].textContent = t('email_lbl');
-  if(authLbls[1]) authLbls[1].textContent = t('pass_lbl');
-  if(authLbls[2]) authLbls[2].textContent = t('email_lbl');
-  if(authLbls[3]) authLbls[3].textContent = t('pass_lbl');
-  if(authLbls[4]) authLbls[4].textContent = t('confirm_lbl');
-  // Auth buttons
-  const lb = document.getElementById('login-btn'); if(lb) lb.textContent = t('login_btn');
-  const sb = document.getElementById('su-btn'); if(sb) sb.textContent = t('signup_btn');
-  // Food input placeholder
-  const fi = document.getElementById('food-inp'); if(fi) fi.placeholder = t('food_placeholder');
-  // Thinking text
-  const th = document.getElementById('thinking'); if(th) th.innerHTML = '<span class="spin-dot"></span>'+t('thinking');
-  // Stats labels in render
-  const hs = document.querySelectorAll('.hs-l');
-  const labels = [t('consumed'), t('burned'), t('net'), t('remaining')];
-  hs.forEach((el,i) => { if(labels[i]) el.textContent = labels[i]; });
-  // Config select options
-  const actSel = document.getElementById('cfg-act');
-  if(actSel){
-    const opts = ['act_sedentary','act_light','act_moderate','act_active','act_very'];
-    actSel.querySelectorAll('option').forEach((o,i) => { if(opts[i]) o.textContent = t(opts[i]); });
-  }
-  const genSel = document.getElementById('cfg-gender');
-  if(genSel){ genSel.options[0].textContent = t('gender_m'); genSel.options[1].textContent = t('gender_f'); }
-  // Config row labels
-  const cfgLabels = document.querySelectorAll('.srow .sr-lbl');
-  const cfgKeys = ['cfg_gender','cfg_age','cfg_height','cfg_weight','cfg_target','cfg_activity','cfg_calories'];
-  cfgLabels.forEach((el,i) => { if(cfgKeys[i]) el.textContent = t(cfgKeys[i]); });
-  // Weight page labels
-  const wsave = document.querySelector('.w-save'); if(wsave) wsave.textContent = t('save_weight');
-  // Chart titles
-  const ctitles = document.querySelectorAll('.chart-title span:first-child');
-  const chartKeys = ['week_chart','calendar','month_trend'];
-  ctitles.forEach((el,i) => { if(chartKeys[i]) el.textContent = t(chartKeys[i]); });
-  // Ob screen labels
-  const obTitles = document.querySelectorAll('.ob-title');
-  const obSubs = document.querySelectorAll('.ob-sub');
-  if(obTitles[0]) obTitles[0].textContent = t('ob_title1');
-  if(obTitles[1]) obTitles[1].textContent = t('ob_title2');
-  if(obTitles[2]) obTitles[2].textContent = t('ob_title3');
-  if(obSubs[0]) obSubs[0].textContent = t('ob_sub1');
-  if(obSubs[1]) obSubs[1].textContent = t('ob_sub2');
-  if(obSubs[2]) obSubs[2].textContent = t('ob_sub3');
-  const obBtns = document.querySelectorAll('.ob-btn:not(.ghost)');
-  if(obBtns[0]) obBtns[0].textContent = t('ob_next');
-  if(obBtns[1]) obBtns[1].textContent = t('ob_calc');
-  if(obBtns[2]) obBtns[2].textContent = t('ob_start');
-  document.querySelectorAll('.ob-btn.ghost').forEach(b => b.textContent = t('ob_back'));
-  // Meal type buttons (preserve emojis)
-  const typeMap = {t_breakfast:'☀️', t_lunch:'🍽', t_snack_pm:'🍎', t_dinner:'🌙', t_snack:'🧁', t_activity:'🏃'};
-  document.querySelectorAll('[data-i18n^="t_"]').forEach(el => {
-    const key = el.dataset.i18n;
-    const emoji = typeMap[key] || '';
-    el.textContent = emoji + ' ' + t(key).replace(/^[^\s]+\s/,'');
-  });
-}
+function applyLang(){}
 
 // ══════════════════════════════════════════════════════
 // ── END i18n ─────────────────────────────────────────
