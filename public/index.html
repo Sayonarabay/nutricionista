@@ -1136,15 +1136,18 @@ async function loadFoodKB(){
 
 // ── SYNC ───────────────────────────────────────────────────────────────────
 async function syncNow(){
-  const btn=document.getElementById('sync-btn');btn.classList.add('busy');btn.textContent='…';
+  const btn=document.getElementById('sync-btn');
+  if(btn){btn.classList.add('busy');btn.textContent='…';}
   try{
     await Promise.all([loadTodayMeals(),loadWeightHistory(),loadCalHistory(),loadFoodKB()]);
     const{data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
     if(data)profile=data;
-    render();updSync('ok','✅ Sincronizado · '+new Date().toLocaleTimeString('es-ES'));
+    render();
     showToast('✅ Sincronizado','green');
-  }catch(e){updSync('err','❌ '+e.message);}
-  btn.classList.remove('busy');btn.textContent='↑↓ sync';
+  }catch(e){
+    showToast('❌ '+e.message);
+  }
+  if(btn){btn.classList.remove('busy');btn.textContent='↑↓';}
 }
 function updSync(t,m){const el=document.getElementById('sync-status');if(el){el.textContent=m;el.className='sync-status '+t;}}
 async function saveProfile(){profile.updated_at=new Date().toISOString();await sb.from('profiles').upsert({...profile,id:currentUser.id});}
@@ -1523,7 +1526,7 @@ async function updateStreak(){
   if(profile.last_streak_date===td)return;
   profile.streak=profile.last_streak_date===yesterday?(profile.streak||0)+1:1;
   profile.last_streak_date=td;
-  document.getElementById('nav-streak').textContent=profile.streak;
+  const ns=document.getElementById('nav-streak');if(ns)ns.textContent=profile.streak;
   await sb.from('profiles').update({streak:profile.streak,last_streak_date:td}).eq('id',currentUser.id);
 }
 
