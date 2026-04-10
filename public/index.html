@@ -1016,7 +1016,7 @@ function initMotiv(){
 // ── STATE ──────────────────────────────────────────────────────────────────
 let currentUser=null, profile={}, todayMeals=[], weightHistory=[], calHistory=[], foodKB=[];
 let currentQty=1, editingMealId=null;
-function today(){return new Date().toISOString().split('T')[0];}
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 
 // ── HARRIS-BENEDICT ────────────────────────────────────────────────────────
 function calcGoal(p){
@@ -1162,9 +1162,9 @@ async function obFinish(){
 async function bootApp(){
   document.getElementById('app').classList.add('on');
   await Promise.all([loadTodayMeals(),loadWeightHistory(),loadCalHistory(),loadFoodKB()]);
-  initMotiv();render();applyLang();
-  showToast('👋 '+t('hello')+' '+currentUser.email.split('@')[0],'orange');
-  updSync('ok',t('synced'));
+  initMotiv();render();
+  showToast('👋 Hola, '+currentUser.email.split('@')[0],'orange');
+  updSync('ok','✅ Datos cargados');
 }
 
 // ── DATA ───────────────────────────────────────────────────────────────────
@@ -1200,7 +1200,7 @@ async function syncNow(){
     const{data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
     if(data)profile=data;
     render();
-    showToast(t('synced'),'green');
+    showToast('✅ Sincronizado','green');
   }catch(e){
     showToast('❌ '+e.message);
   }
@@ -1356,7 +1356,7 @@ async function analyze(){
   const desc=document.getElementById('food-inp').value.trim();if(!desc)return;
   const isAct=curType==='Actividad';
   document.getElementById('go-btn').disabled=true;
-  document.getElementById('thinking').style.display='block';document.getElementById('thinking').innerHTML='<span class="spin-dot"></span>'+t('thinking');
+  document.getElementById('thinking').style.display='block';document.getElementById('thinking').innerHTML='<span class="spin-dot"></span>'+'Calculando con IA…';
   document.getElementById('fb-box').style.display='none';
 
   // Try loose KB match first (e.g. "2 cafes" → "café")
@@ -1430,7 +1430,7 @@ function showFeedback(desc,kcal,isAct,tip){
   const rem=t.remaining;
   const msg=isAct
     ?`🏃 ${kcal} kcal`
-    :t('add_kcal',{n:kcal});
+    :`+${kcal} kcal añadidas`;
   showToast(msg,'green',2200);
 }
 
@@ -1574,7 +1574,7 @@ async function saveWeight(){
   await sb.from('weight_history').insert({auth_user_id:currentUser.id,weight_kg:v,recorded_at:new Date().toISOString()});
   await sb.from('profiles').update({weight_kg:v,updated_at:new Date().toISOString()}).eq('id',currentUser.id);
   profile.weight_kg=v;document.getElementById('w-inp').value='';
-  await loadWeightHistory();renderWeight();render();showToast(t('saved_weight',{v}),'green');
+  await loadWeightHistory();renderWeight();render();showToast('⚖️ '+v+' kg guardado','green');
 }
 
 // ── STREAK ────────────────────────────────────────────────────────────────
@@ -1605,11 +1605,11 @@ function renderAlerts(){
 
   // ── PASADO de calorías ──
   if(t.net>goal)
-    alerts.push({cls:'carb',txt:t('alert_over',{n:(t.net-goal).toLocaleString(),consumed:t.net.toLocaleString(),goal:goal.toLocaleString()})});
+    alerts.push({cls:'carb',txt:`🚨 Te has pasado ${(t.net-goal).toLocaleString('es-ES')} kcal (llevas ${t.net.toLocaleString('es-ES')} de ${goal}).`});
 
   // ── QUEDA margen ──
   else if(t.remaining>0&&todayMeals.length>0)
-    alerts.push({cls:'done',txt:t('alert_left',{n:t.remaining.toLocaleString()})});
+    alerts.push({cls:'done',txt:`✅ Te quedan ${t.remaining.toLocaleString('es-ES')} kcal para hoy.`});
 
   // ── Proteínas bajas por la tarde ──
   if(hour>=14&&prot<protGoal*0.5){
@@ -1628,7 +1628,7 @@ function render(){
   const protGoal=Math.round((profile.weight_kg||80)*1.6);
   const prot=todayMeals.filter(m=>m.type!=='Actividad').reduce((s,m)=>s+(m.protein_g||0),0);
   const name=currentUser.email.split('@')[0];
-  document.getElementById('h-name').textContent=t('hello')+' '+name+' 👋';
+  document.getElementById('h-name').textContent='Hola,'+' '+name+' 👋';
   (function(){const d=new Date();const days=['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];const months=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];document.getElementById('h-date').textContent=days[d.getDay()]+', '+d.getDate()+' de '+months[d.getMonth()];})();
   // stats
   document.getElementById('sc-con').textContent=t.consumed.toLocaleString('es-ES')+' kcal';
@@ -1762,7 +1762,7 @@ function drawCal(){
 // ── KB LIST ───────────────────────────────────────────────────────────────
 function renderKBList(){
   const el=document.getElementById('kb-list');if(!el)return;
-  if(!foodKB.length){el.innerHTML='<div style="font-size:12px;color:var(--ink3)">'+t('kb_empty')+'</div>';return;}
+  if(!foodKB.length){el.innerHTML='<div style="font-size:12px;color:var(--ink3)">'+'Aún no hay alimentos guardados.'+'</div>';return;}
   el.innerHTML=foodKB.slice(0,15).map((f,i)=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bg2)">
       <div><div style="font-size:12px;font-weight:800">${f.name}</div><div style="font-size:10px;color:var(--ink3)">${f.times_used}x usado · ${f.unit}</div></div>
