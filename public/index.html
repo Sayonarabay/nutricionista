@@ -1179,17 +1179,19 @@ function renderSuggestions(){
   const top=foodKB.filter(f=>f.times_used>=1).slice(0,6);
   const sec=document.getElementById('suggestions');
   if(!top.length){sec.innerHTML='';return;}
-  sec.innerHTML=top.map(f=>`
-    <div class="sug-chip" onclick="selectKBItem(${foodKB.indexOf(f)})">
+  sec.innerHTML=top.map((f,i)=>`
+    <div class="sug-chip" onclick="selectKBItem(${i})">
       <span class="sc-n">${f.name}</span>
       <span class="sc-k">${f.kcal_per_unit} kcal</span>
     </div>`).join('');
+  // store top refs for selectKBItem
+  window._topKB=top;
 }
 
 let selectedKBItem=null,acFocusIdx=-1;
 
 function selectKBItem(idx){
-  const f=foodKB[idx];if(!f)return;
+  const f=(window._topKB&&window._topKB[idx])||foodKB[idx];if(!f)return;
   selectedKBItem=f;currentQty=1;
   document.getElementById('kbs-name').textContent=f.name;
   document.getElementById('qty-n').textContent='1';
@@ -1269,7 +1271,16 @@ document.getElementById('food-inp').addEventListener('keydown',function(e){
 });
 function pickAC(i){
   const r=document.getElementById('autocomplete')._results[i];
-  selectKBItem(foodKB.indexOf(r));
+  if(!r)return;
+  // directly select without needing indexOf
+  selectedKBItem=r; currentQty=1;
+  document.getElementById('kbs-name').textContent=r.name;
+  document.getElementById('qty-n').textContent='1';
+  document.getElementById('qty-unit').textContent=r.unit_label||r.unit||'ud';
+  updateKBSelectedDisplay();
+  document.getElementById('kb-selected').style.display='block';
+  document.getElementById('free-input-area').style.display='none';
+  hideAutocomplete();
 }
 function hideAutocomplete(){const ac=document.getElementById('autocomplete');ac.classList.remove('on');acFocusIdx=-1;}
 
@@ -1305,11 +1316,12 @@ async function analyze(){
     // Call AI — only when truly needed
     const prompt=isAct
       ?`Actividad física: "${desc}". Persona ${profile.weight_kg||80}kg. SOLO JSON sin texto extra: {"kcal":NUM,"name":"nombre_corto"}`
-      :`Alimento: "${desc}". SOLO JSON sin texto extra: {"kcal":NUM,"protein_g":NUM,"carbs_g":NUM,"fat_g":NUM,"name":"nombre_normalizado_singular","unit_label":"1 taza|1 pieza|100g|1 ración|1 vaso","tip":"consejo muy breve"}
-nombre_normalizado_singular = nombre genérico en singular sin cantidad (ej: "café con leche", "huevo duro", "plátano").`;
+      :`Eres un nutricionista experto en cocina española. Calcula las calorías y macros REALES de: "${desc}".
+Usa porciones estándar españolas. Ejemplos de referencia: café con leche normal=80kcal, ensalada completa=200-350kcal, tortilla de 2 huevos=180kcal, plátano mediano=90kcal.
+Responde SOLO con JSON válido, sin texto extra: {"kcal":NUM,"protein_g":NUM,"carbs_g":NUM,"fat_g":NUM,"name":"nombre_normalizado","unit_label":"1 ración"}`;
     try{
       const r=await fetch('https://zwvcqhqyhtrsirolxdjm.supabase.co/functions/v1/ai',{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:120,messages:[{role:'user',content:prompt}]})});
+        body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:200,messages:[{role:'user',content:prompt}]})});
       const d=await r.json();
       const j=JSON.parse((d.content?.[0]?.text||'{}').replace(/```(?:json)?|```/g,'').trim());
       const kcal=Math.round(j.kcal||0);
@@ -1327,7 +1339,6 @@ nombre_normalizado_singular = nombre genérico en singular sin cantidad (ej: "ca
     }
   }
 
-  document.getElementById('food-inp').value='';
   await finishAdd();
 }
 
@@ -1337,10 +1348,10 @@ function extractQty(desc){
 }
 
 async function finishAdd(){
-  render();
+  document.getElementById('food-inp').value='';
   document.getElementById('go-btn').disabled=false;
   document.getElementById('thinking').style.display='none';
-  // async in background
+  render();
   loadCalHistory().then(()=>render());
   updateStreak();
 }
