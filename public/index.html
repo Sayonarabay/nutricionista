@@ -105,10 +105,6 @@ body{font-family:var(--fb);color:var(--ink);min-height:100vh;background:var(--bg
 .streak-pill{display:none}
 
 /* ── LANG SWITCHER ── */
-.lang-sw{display:flex;gap:3px;align-items:center;margin-right:4px}
-.lang-btn{padding:3px 7px;font-size:10px;font-weight:900;border:1.5px solid var(--bg3);border-radius:6px;background:transparent;color:var(--ink3);cursor:pointer;font-family:var(--fb);transition:all .15s;line-height:1}
-.lang-btn.on{background:var(--orange);border-color:var(--orange);color:#fff}
-.lang-btn:hover:not(.on){border-color:var(--orange);color:var(--orange)}
 .sync-btn{padding:5px 10px;background:var(--bg2);border:none;border-radius:99px;font-size:11px;font-weight:800;color:var(--ink3);cursor:pointer;transition:all .15s;font-family:var(--fb)}
 .sync-btn:hover{background:var(--bg3)}
 .sync-btn.busy{opacity:.4;pointer-events:none}
@@ -525,11 +521,6 @@ canvas{width:100%!important}
   <div class="topbar">
     <div class="tb-logo">nootrit</div>
     <div class="tb-r">
-      <div class="lang-sw">
-        <button class="lang-btn on" id="lb-es" onclick="setLang('es')">ES</button>
-        <button class="lang-btn" id="lb-fr" onclick="setLang('fr')">FR</button>
-        <button class="lang-btn" id="lb-en" onclick="setLang('en')">EN</button>
-      </div>
       <button class="sync-btn" id="sync-btn" onclick="syncNow()">↑↓</button>
     </div>
   </div>
@@ -1113,8 +1104,7 @@ async function doSignout(){
 }
 
 // ── SESSION RESTORE ON LOAD ────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', async function(){  applyLang();
-  // Always show auth screen first, then check session
+window.addEventListener('DOMContentLoaded', async function(){  // Always show auth screen first, then check session
   document.getElementById('auth-screen').style.display='flex';
   try {
     const user = await sb.auth.refreshSession();
@@ -1639,7 +1629,7 @@ function render(){
   const prot=todayMeals.filter(m=>m.type!=='Actividad').reduce((s,m)=>s+(m.protein_g||0),0);
   const name=currentUser.email.split('@')[0];
   document.getElementById('h-name').textContent=t('hello')+' '+name+' 👋';
-  (function(){const d=new Date(),L=(LANGS[currentLang]||LANGS.es);document.getElementById('h-date').textContent=L.days[d.getDay()]+', '+d.getDate()+' '+L.months[d.getMonth()];})();
+  (function(){const d=new Date();const days=['Domingo','Lunes','Martes','Miercoles','Jueves','Viernes','Sabado'];const months=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];document.getElementById('h-date').textContent=days[d.getDay()]+', '+d.getDate()+' de '+months[d.getMonth()];})();
   // stats
   document.getElementById('sc-con').textContent=t.consumed.toLocaleString('es-ES')+' kcal';
   document.getElementById('sc-bur').textContent=t.burned.toLocaleString('es-ES')+' kcal';
