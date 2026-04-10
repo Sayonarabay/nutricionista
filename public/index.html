@@ -543,16 +543,14 @@ canvas{width:100%!important}
         <svg id="avatar-svg" class="avatar-svg" width="56" height="72" viewBox="0 0 14 18"></svg>
         <div class="avatar-info">
           <div class="avatar-name" id="h-name">Hola 👋</div>
-          <div class="avatar-progress" id="avatar-progress">Cargando…</div>
+          <div class="h-date" id="h-date" style="font-size:10px;color:rgba(255,255,255,.6);font-weight:700;margin-top:1px"></div>
+          <div class="avatar-progress" id="avatar-progress"></div>
           <div class="avatar-target" id="avatar-target"></div>
         </div>
-        <div class="h-weight-badge" onclick="showPage('progress',document.querySelectorAll('.bni')[1])">
-          <div class="h-weight-n" id="h-w-cur">—</div>
-          <div class="h-weight-l">KG HOY</div>
+        <div style="text-align:right;flex-shrink:0" onclick="showPage('progress',document.querySelectorAll('.bni')[1])" style="cursor:pointer">
+          <div style="font-family:var(--fd);font-size:20px;font-weight:900;color:#fff;line-height:1;letter-spacing:-.04em" id="h-w-cur">—</div>
+          <div style="font-size:7px;font-weight:800;color:rgba(255,255,255,.6);letter-spacing:.1em;margin-top:2px">KG HOY</div>
         </div>
-      </div>
-      <div class="h-top" style="margin-bottom:10px">
-        <div><div class="h-date" id="h-date" style="font-size:11px;color:rgba(255,255,255,.6);font-weight:700"></div></div>
       </div>
       <div class="h-mid">
         <div class="h-stats" style="flex:1">
