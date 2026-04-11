@@ -573,6 +573,10 @@ canvas{width:100%!important}
     <span id="ring-pct" style="display:none"></span><span id="ring-arc" style="display:none"></span>
 
     <div id="alerts-zone"></div>
+    <div id="menu-suggestion" style="display:none;background:var(--white);border:1.5px solid var(--bg3);border-radius:var(--rl);padding:12px 14px;margin-bottom:10px;animation:fadeUp .3s ease">
+      <div style="font-size:9px;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px">🌅 Sugerencia para hoy</div>
+      <div id="menu-suggestion-body"></div>
+    </div>
 
     <div class="card anim-up-2">
       <div class="clbl" data-i18n="todays_log">Registro de hoy</div>
@@ -1162,7 +1166,7 @@ async function obFinish(){
 // ── BOOT ───────────────────────────────────────────────────────────────────
 async function bootApp(){
   document.getElementById('app').classList.add('on');
-  await Promise.all([loadTodayMeals(),loadWeightHistory(),loadCalHistory(),loadFoodKB()]);
+  await Promise.all([loadTodayMeals(),loadWeightHistory(),loadCalHistory(),loadFoodKB(),loadSharedKB()]);
   initMotiv();render();hidePreloader();
   showToast('👋 Hola, '+currentUser.email.split('@')[0],'orange');
   updSync('ok','✅ Datos cargados');
@@ -1187,9 +1191,38 @@ async function loadCalHistory(){
   }
   calHistory=Object.values(map).map(d=>({...d,net:d.consumed-d.burned})).sort((a,b)=>a.date.localeCompare(b.date));
 }
+let sharedKB = [];
+
 async function loadFoodKB(){
   const{data}=await sb.from('food_kb').select('*').eq('auth_user_id',currentUser.id).order('times_used',{ascending:false}).limit(200);
   foodKB=data||[];
+}
+
+async function loadSharedKB(){
+  try{
+    const{data}=await sb.from('shared_food_kb').select('*').order('times_used',{ascending:false}).limit(1000);
+    sharedKB=data||[];
+  }catch(e){ sharedKB=[]; }
+}
+
+// Combined search: personal KB first (higher priority), then shared
+function kbSearchAll(q){
+  if(!q||q.length<2) return [];
+  const lq=q.toLowerCase().trim();
+  const personalNames=new Set(foodKB.map(f=>f.name.toLowerCase()));
+  // Personal results (score: starts-with + times_used)
+  const personal=foodKB
+    .filter(f=>f.name.toLowerCase().includes(lq))
+    .map(f=>({...f,_score:(f.name.toLowerCase().startsWith(lq)?200:0)+f.times_used*2,_src:'personal'}))
+    .sort((a,b)=>b._score-a._score)
+    .slice(0,4);
+  // Shared results (only if not already in personal)
+  const shared=sharedKB
+    .filter(f=>f.name.toLowerCase().includes(lq)&&!personalNames.has(f.name.toLowerCase()))
+    .map(f=>({...f,_score:(f.name.toLowerCase().startsWith(lq)?100:0)+f.times_used,_src:'shared'}))
+    .sort((a,b)=>b._score-a._score)
+    .slice(0,3);
+  return [...personal,...shared].slice(0,6);
 }
 
 // ── SYNC ───────────────────────────────────────────────────────────────────
@@ -1197,7 +1230,7 @@ async function syncNow(){
   const btn=document.getElementById('sync-btn');
   if(btn){btn.classList.add('busy');btn.textContent='…';}
   try{
-    await Promise.all([loadTodayMeals(),loadWeightHistory(),loadCalHistory(),loadFoodKB()]);
+    await Promise.all([loadTodayMeals(),loadWeightHistory(),loadCalHistory(),loadFoodKB(),loadSharedKB()]);
     const{data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
     if(data)profile=data;
     render();
@@ -1213,6 +1246,7 @@ async function saveProfile(){profile.updated_at=new Date().toISOString();await s
 // ── FOOD KB ────────────────────────────────────────────────────────────────
 async function kbUpsert(name,kcal,unit='porción',protein_g=0,carbs_g=0,fat_g=0){
   const norm=name.toLowerCase().trim();
+  // ── Personal KB ──
   const ex=foodKB.find(f=>f.name===norm);
   if(ex){
     ex.times_used++;ex.last_used=new Date().toISOString();
@@ -1222,22 +1256,23 @@ async function kbUpsert(name,kcal,unit='porción',protein_g=0,carbs_g=0,fat_g=0)
     if(data)foodKB.unshift(data);
   }
   foodKB.sort((a,b)=>b.times_used-a.times_used);
+  // ── Shared KB — upsert via RPC or direct insert ──
+  // (anon key can read but not write shared_food_kb — save to personal only)
+  // Update local sharedKB cache
+  const exS=sharedKB.find(f=>f.name===norm);
+  if(!exS) sharedKB.unshift({name:norm,kcal_per_unit:kcal,unit,unit_label:'1 '+unit,protein_g,carbs_g,fat_g,times_used:1});
 }
 // ── KB SEARCH & SUGGESTIONS ───────────────────────────────────────────────
 function kbSearch(q){
-  if(!q||q.length<2)return[];
-  const lq=q.toLowerCase().trim();
-  // score: starts-with > contains
-  const scored=foodKB
-    .filter(f=>f.name.includes(lq)||(f.aliases||[]).some(a=>a.includes(lq)))
-    .map(f=>({...f,score:(f.name.startsWith(lq)?100:0)+f.times_used}))
-    .sort((a,b)=>b.score-a.score);
-  return scored.slice(0,7);
+  return kbSearchAll(q);
 }
 
 function renderSuggestions(){
-  // top 6 most used items as chips
-  const top=foodKB.filter(f=>f.times_used>=1).slice(0,6);
+  // top from personal KB first, then fill with shared if needed
+  const personalTop=foodKB.filter(f=>f.times_used>=1).slice(0,4);
+  const personalNames=new Set(personalTop.map(f=>f.name.toLowerCase()));
+  const sharedTop=sharedKB.filter(f=>!personalNames.has(f.name.toLowerCase())).slice(0,2);
+  const top=[...personalTop,...sharedTop].slice(0,6);
   const sec=document.getElementById('suggestions');
   if(!top.length){sec.innerHTML='';return;}
   sec.innerHTML=top.map((f,i)=>`
@@ -1671,7 +1706,7 @@ function render(){
       </div>`).join('');
     window._meals=[...todayMeals];
   }
-  renderAlerts();renderSuggestions();
+  renderAlerts();renderSuggestions();renderMenuSuggestion();
   const _ns=document.getElementById('nav-streak');if(_ns)_ns.textContent=profile.streak||0;
   renderWeight();renderProgress();renderKBList();
   drawAvatar();renderMealSuggestion();checkCloseDayBtn();renderWeeklySummary();
@@ -2296,6 +2331,100 @@ function closeDayFlow(){
 
   // Update streak
   document.getElementById('day-close-btn').classList.remove('visible');
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// MENU SUGGESTION — contextual, solo cuando es útil
+// ══════════════════════════════════════════════════════════════
+function renderMenuSuggestion(){
+  const el = document.getElementById('menu-suggestion');
+  const body = document.getElementById('menu-suggestion-body');
+  if(!el || !body) return;
+
+  const hour = new Date().getHours();
+  const t = totals();
+  const goal = profile.goal_kcal || 2000;
+  const consumed = t.consumed;
+  const allKB = [...foodKB, ...sharedKB.filter(s=>!foodKB.find(p=>p.name===s.name))];
+
+  // Only show if there's something useful to suggest
+  // and user hasn't eaten enough for the moment of day
+  let label = '', items = [], show = false;
+
+  if(hour >= 6 && hour < 10 && consumed < 100){
+    // Morning: suggest breakfast (~25% of goal)
+    label = '☀️ Para desayunar';
+    items = buildMenuFor(Math.round(goal * 0.25), allKB, ['desayunos','pan y cereales','lácteos','fruta']);
+    show = items.length > 0;
+
+  } else if(hour >= 12 && hour < 15 && consumed < goal * 0.4){
+    // Lunchtime: suggest lunch (~35% of goal)
+    label = '🍽 Para comer';
+    items = buildMenuFor(Math.round(goal * 0.35), allKB, ['ensaladas','sopas','arroces','pastas','pescados','carnes','legumbres','platos']);
+    show = items.length > 0;
+
+  } else if(hour >= 16 && hour < 19 && t.remaining > 100 && t.remaining < 600){
+    // Afternoon: suggest snack (~10% of goal)
+    label = '🍎 Para merendar';
+    items = buildMenuFor(Math.round(goal * 0.1), allKB, ['meriendas','fruta','snacks','lácteos']);
+    show = items.length > 0;
+  }
+
+  if(!show){ el.style.display='none'; return; }
+
+  const total = items.reduce((s,i)=>s+i.kcal_per_unit, 0);
+  body.innerHTML = `
+    <div style="font-size:10px;font-weight:800;color:var(--orange-d);margin-bottom:6px">${label} · ~${total} kcal</div>
+    ${items.map(i=>`
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--bg2);font-size:12px">
+        <span style="font-weight:700;color:var(--ink)">${i.name}</span>
+        <span style="font-weight:900;color:var(--orange)">${i.kcal_per_unit} kcal</span>
+      </div>`).join('')}
+    <div style="font-size:10px;color:var(--ink3);margin-top:6px">Te quedan ${t.remaining} kcal hoy · toca un alimento para añadirlo</div>`;
+
+  // Make items tappable
+  body.querySelectorAll('div[style*="border-bottom"]').forEach((div, i) => {
+    div.style.cursor = 'pointer';
+    div.addEventListener('click', () => {
+      const item = items[i];
+      document.getElementById('food-inp').value = item.name;
+      document.getElementById('food-inp').focus();
+      el.style.display = 'none';
+    });
+  });
+
+  el.style.display = 'block';
+}
+
+function buildMenuFor(targetKcal, kb, preferredCategories){
+  // Filter by preferred categories first, then fall back to all
+  let pool = kb.filter(f => preferredCategories.includes(f.category) && f.kcal_per_unit > 30 && f.kcal_per_unit <= targetKcal * 0.8);
+  if(pool.length < 2) pool = kb.filter(f => f.kcal_per_unit > 30 && f.kcal_per_unit <= targetKcal);
+  if(!pool.length) return [];
+
+  // Sort by times_used descending (personal habits first)
+  pool = pool.sort((a,b) => (b.times_used||0) - (a.times_used||0));
+
+  // Greedy: pick 2-3 items closest to target
+  let best = [], bestDiff = Infinity;
+  const top = pool.slice(0, 25);
+  for(let i=0; i<top.length; i++){
+    // Single item
+    const d1 = Math.abs(targetKcal - top[i].kcal_per_unit);
+    if(d1 < bestDiff){ best=[top[i]]; bestDiff=d1; }
+    for(let j=i+1; j<top.length; j++){
+      const s2 = top[i].kcal_per_unit + top[j].kcal_per_unit;
+      const d2 = Math.abs(targetKcal - s2);
+      if(d2 < bestDiff && s2 <= targetKcal * 1.15){ best=[top[i],top[j]]; bestDiff=d2; }
+      for(let k=j+1; k<top.length; k++){
+        const s3 = s2 + top[k].kcal_per_unit;
+        const d3 = Math.abs(targetKcal - s3);
+        if(d3 < bestDiff && s3 <= targetKcal * 1.2){ best=[top[i],top[j],top[k]]; bestDiff=d3; }
+      }
+    }
+  }
+  return best;
 }
 
 ['login-email','login-pass'].forEach(id=>document.getElementById(id)?.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();}));
