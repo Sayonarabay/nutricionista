@@ -1194,7 +1194,7 @@ async function loadCalHistory(){
 let sharedKB = [];
 
 async function loadFoodKB(){
-  const{data}=await sb.from('food_kb').select('*').eq('auth_user_id',currentUser.id).order('times_used',{ascending:false}).limit(200);
+  const{data}=await sb.from('food_kb').select('*').eq('auth_user_id',currentUser.id).order('times_used',{ascending:false}).limit(1000);
   foodKB=data||[];
 }
 
